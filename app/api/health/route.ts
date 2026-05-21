@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { prisma } from "@/lib/prisma";
-import { getRedis } from "@/lib/redis";
+import { getRedis, prisma } from "@/lib/db";
 
 export async function GET() {
+  // 各依赖独立检查，便于响应中展示部分故障。
   const checks = {
     database: "ok",
     redis: "ok",
@@ -24,6 +24,7 @@ export async function GET() {
 
   const healthy = Object.values(checks).every((status) => status === "ok");
 
+  // 依赖异常时返回 503，方便负载均衡和部署探针识别故障。
   return NextResponse.json(
     {
       status: healthy ? "ok" : "error",
