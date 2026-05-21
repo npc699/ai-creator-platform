@@ -24,7 +24,7 @@ export function HomeSidebar({
 }: HomeSidebarProps) {
   return (
     <aside className="hidden w-72 shrink-0 xl:block">
-      <div className="sticky top-20 space-y-4 p-4">
+      <div className="sticky top-20 z-10 space-y-4 px-4 pb-4">
         <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm">
           <Link
             className={`flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold ${btnSoft}`}

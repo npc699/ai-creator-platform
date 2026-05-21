@@ -3,7 +3,7 @@ import { HomeSidebar } from "@/components/layout/home-sidebar";
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)]">
+    <div className="flex items-stretch">
       <HomeFeed />
       <HomeSidebar />
     </div>

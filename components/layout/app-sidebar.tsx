@@ -99,26 +99,34 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-56 shrink-0 border-r border-zinc-200/80 bg-white lg:block xl:w-60">
-      <div className="sticky top-16 space-y-6 p-4">
-        <NavSection items={mainNav} pathname={pathname} />
-        <NavSection items={creationNav} pathname={pathname} title="我的创作" />
-        <NavSection items={toolNav} pathname={pathname} title="工具" />
+    <aside className="hidden w-56 shrink-0 lg:block xl:w-60">
+      <div className="sticky top-20 z-10">
+        <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm">
+          <div className="space-y-6">
+            <NavSection items={mainNav} pathname={pathname} />
+            <NavSection
+              items={creationNav}
+              pathname={pathname}
+              title="我的创作"
+            />
+            <NavSection items={toolNav} pathname={pathname} title="工具" />
 
-        <div
-          className={cn(
-            "rounded-2xl border p-4",
-            borderBrandSoft,
-            bgBrandSurface
-          )}
-        >
-          <div className="mb-2 flex items-center gap-2 text-brand-on-surface">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-semibold">创作助手</span>
+            <div
+              className={cn(
+                "rounded-2xl border p-4",
+                borderBrandSoft,
+                bgBrandSurface
+              )}
+            >
+              <div className="mb-2 flex items-center gap-2 text-brand-on-surface">
+                <Sparkles className="h-4 w-4" />
+                <span className="text-sm font-semibold">创作助手</span>
+              </div>
+              <p className="text-xs leading-5 text-brand-muted">
+                编辑器、草稿与发布能力将在后续迭代中逐步开放。
+              </p>
+            </div>
           </div>
-          <p className="text-xs leading-5 text-brand-muted">
-            编辑器、草稿与发布能力将在后续迭代中逐步开放。
-          </p>
         </div>
       </div>
     </aside>

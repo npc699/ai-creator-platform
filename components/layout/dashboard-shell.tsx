@@ -42,7 +42,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
           isAdmin={isAdmin}
           subtitle={subtitle}
         />
-        <div className="mx-auto flex w-full max-w-[1440px]">
+        <div className="mx-auto flex w-full max-w-[1440px] items-stretch gap-4 px-4 pb-6 pt-4 lg:px-6">
           <AppSidebar />
           <div className="min-w-0 flex-1">{children}</div>
         </div>

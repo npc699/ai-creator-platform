@@ -4,7 +4,7 @@ import { btnSoft } from "@/lib/utils/brand";
 
 export default function EditorPlaceholderPage() {
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-8">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center p-8">
       <div className="max-w-md rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
         <h1 className="text-xl font-semibold text-zinc-900">编辑器</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">

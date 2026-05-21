@@ -8,7 +8,18 @@ import { cn } from "@/lib/utils";
 
 const tabs = ["推荐", "最新", "热点", "爆文"] as const;
 
-const feedItems = [
+type FeedItem = {
+  id: string;
+  author: string;
+  time: string;
+  title: string;
+  excerpt: string;
+  tags: string[];
+  views: string;
+  likes: string;
+};
+
+const baseFeedItems: FeedItem[] = [
   {
     id: "1",
     author: "科技观察员",
@@ -44,77 +55,97 @@ const feedItems = [
   },
 ];
 
+// 测试滚动布局用的占位数据，联调完成后可删除或改回接口数据
+const feedItems: FeedItem[] = [
+  ...baseFeedItems,
+  ...Array.from({ length: 15 }, (_, index) => {
+    const template = baseFeedItems[index % baseFeedItems.length]!;
+    const seq = index + 4;
+
+    return {
+      ...template,
+      id: `scroll-mock-${seq}`,
+      time: `${seq} 小时前`,
+      title: `[滚动测试 #${seq}] ${template.title}`,
+      views: `${(seq * 1.3).toFixed(1)}k`,
+      likes: String(seq * 127),
+    };
+  }),
+];
+
 export function HomeFeed() {
   const [activeTab, setActiveTab] =
     useState<(typeof tabs)[number]>("推荐");
 
   return (
     <section className="min-w-0 flex-1">
-      <div className="border-b border-zinc-200 bg-white px-4 py-3 lg:px-0">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition",
-                activeTab === tab ? btnSoftActive : btnSoft
-              )}
-              onClick={() => setActiveTab(tab)}
-              type="button"
+      <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
+        <div className="border-b border-zinc-200/80 px-4 py-3">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-medium transition",
+                  activeTab === tab ? btnSoftActive : btnSoft
+                )}
+                onClick={() => setActiveTab(tab)}
+                type="button"
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-4 p-4">
+          {feedItems.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-brand-border hover:shadow-md"
             >
-              {tab}
-            </button>
+              <div className="flex items-center gap-3">
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${surfaceSoft}`}
+                >
+                  {item.author.slice(0, 1)}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-zinc-900">{item.author}</p>
+                  <p className="text-xs text-zinc-500">{item.time}</p>
+                </div>
+              </div>
+
+              <h3 className="mt-4 text-lg font-semibold leading-7 text-zinc-900">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-600">{item.excerpt}</p>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {item.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${surfaceSoft}`}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-4 text-sm text-zinc-500">
+                  <span className="inline-flex items-center gap-1">
+                    <Eye className="h-4 w-4" />
+                    {item.views}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Heart className="h-4 w-4" />
+                    {item.likes}
+                  </span>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
-      </div>
-
-      <div className="space-y-4 p-4 lg:px-0 lg:py-4">
-        {feedItems.map((item) => (
-          <article
-            key={item.id}
-            className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-brand-border hover:shadow-md"
-          >
-            <div className="flex items-center gap-3">
-              <span
-                className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${surfaceSoft}`}
-              >
-                {item.author.slice(0, 1)}
-              </span>
-              <div>
-                <p className="text-sm font-medium text-zinc-900">{item.author}</p>
-                <p className="text-xs text-zinc-500">{item.time}</p>
-              </div>
-            </div>
-
-            <h3 className="mt-4 text-lg font-semibold leading-7 text-zinc-900">
-              {item.title}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">{item.excerpt}</p>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-2">
-                {item.tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${surfaceSoft}`}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <div className="flex items-center gap-4 text-sm text-zinc-500">
-                <span className="inline-flex items-center gap-1">
-                  <Eye className="h-4 w-4" />
-                  {item.views}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <Heart className="h-4 w-4" />
-                  {item.likes}
-                </span>
-              </div>
-            </div>
-          </article>
-        ))}
       </div>
     </section>
   );
