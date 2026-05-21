@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Creator Platform
 
-## Getting Started
+基于 Next.js 16、Auth.js、Prisma、PostgreSQL 和 Redis 的创作者平台。
 
-First, run the development server:
+## 环境要求
+
+- Node.js 20+
+- npm
+- Docker（用于本地 PostgreSQL / Redis）
+
+## 快速启动
+
+### 1. 安装依赖
+
+```bash
+npm install
+```
+
+### 2. 配置环境变量
+
+复制示例文件并填写本地配置：
+
+```bash
+cp .env.example .env
+```
+
+`.env` 至少需要：
+
+```env
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ai_creator_platform"
+REDIS_URL="redis://localhost:6379"
+AUTH_SECRET="请替换为足够长的随机字符串"
+AUTH_URL="http://localhost:3000"
+```
+
+可选：开发管理员账号（用于 `npm run db:seed`）：
+
+```env
+DEV_ADMIN_EMAIL="admin@localhost"
+DEV_ADMIN_PASSWORD="Admin12345"
+DEV_ADMIN_NAME="管理员"
+```
+
+### 3. 启动数据库服务
+
+```bash
+npm run docker:up
+```
+
+### 4. 初始化数据库
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+```
+
+### 5. 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+浏览器访问 [http://localhost:3000](http://localhost:3000)。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+若 3000 端口被占用，Next.js 会自动切换到其他端口（如 `3001`）。此时请同步修改 `.env` 中的 `AUTH_URL`，否则登录可能出现 `UntrustedHost` 错误。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 开发管理员账号
 
-## Learn More
+执行 `npm run db:seed` 后会创建默认管理员：
 
-To learn more about Next.js, take a look at the following resources:
+| 项目 | 默认值 |
+|------|--------|
+| 邮箱 | `admin@localhost` |
+| 密码 | `Admin12345` |
+| 角色 | `ADMIN` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+在 [http://localhost:3000/login](http://localhost:3000/login) 登录。若仍显示旧用户信息，请清除浏览器 Cookie 后重新登录。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 常用命令
 
-## Deploy on Vercel
+| 命令 | 说明 |
+|------|------|
+| `npm run dev` | 启动开发服务器 |
+| `npm run build` | 生产构建 |
+| `npm run start` | 启动生产服务器（需先 `build`） |
+| `npm run lint` | 代码检查 |
+| `npm run docker:up` | 启动 PostgreSQL / Redis |
+| `npm run docker:down` | 停止 Docker 服务 |
+| `npm run db:generate` | 生成 Prisma Client |
+| `npm run db:push` | 同步数据库 Schema |
+| `npm run db:seed` | 写入开发管理员账号 |
+| `npm run db:studio` | 打开 Prisma Studio |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 健康检查
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+开发服务器启动后，可访问：
+
+```text
+GET http://localhost:3000/api/health
+```
+
+正常时返回 `200`，并包含 `database` 与 `redis` 状态。
+
+## 生产环境运行
+
+```bash
+npm run build
+npm run start
+```
+
+生产环境同样需要配置 `DATABASE_URL`、`REDIS_URL`、`AUTH_SECRET`、`AUTH_URL` 等环境变量。
+
+## 文档
+
+- 认证模块设计与实现：[docs/auth.md](docs/auth.md)

@@ -1,5 +1,8 @@
+import "server-only";
+
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "./generated/prisma/client";
+
+import { PrismaClient } from "../generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -13,6 +16,7 @@ if (!databaseUrl) {
 
 const adapter = new PrismaPg(databaseUrl);
 
+// 开发环境会频繁热更新，复用全局客户端可以避免重复建立数据库连接。
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
