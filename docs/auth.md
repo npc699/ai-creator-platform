@@ -1,319 +1,374 @@
-# 认证模块设计与实现
+# 用户中心：认证模块技术文档
 
-本文档说明 `feat/auth` 中邮箱密码认证模块的设计思路、核心流程和当前实现边界。当前认证方案基于 Next.js App Router、Auth.js v5（`next-auth@beta`）、Prisma、PostgreSQL 和 `bcryptjs`。
+本文档描述「用户中心」需求中**登录 / 注册 / 安全退出**相关能力的技术选型、模块划分与核心设计，对应当前 `feat/auth` 分支已实现内容。
 
-## 设计目标
+## 需求对照
 
-认证模块第一阶段的目标是先建立一个完整、可验证的邮箱密码登录闭环：
+| 需求项 | 实现状态 | 说明 |
+|--------|----------|------|
+| 手机号 / 邮箱等方式登录 | ✅ | 登录页使用统一 `identifier` 字段，服务端解析为邮箱或手机号后查库 |
+| 手机号 / 邮箱等方式注册 | ✅ | 注册时邮箱、手机号至少填一项，可同时填写；密码仅存哈希 |
+| 安全退出登录 | ✅ | 顶栏用户菜单调用 Auth.js `signOut`，清理会话 Cookie 并跳转登录页 |
 
-- 用户可以通过邮箱、用户名和密码注册账号。
-- 注册时服务端负责最终校验，并只保存密码哈希。
-- 用户可以通过邮箱和密码登录。
-- 登录成功后通过 JWT session 维持登录态。
-- 未登录用户访问主应用页面时自动跳转登录页。
-- 已登录用户访问登录或注册页时自动跳转首页。
+本阶段**不包含**：短信验证码、OAuth、忘记密码、邮箱验证、用户资料编辑页等，可在后续分支扩展。
 
-本阶段暂不接入 OAuth，也不引入数据库 session 表。因此当前没有使用 `@auth/prisma-adapter`，也没有新增 Auth.js 的 `Account`、`Session`、`VerificationToken` 模型。后续如果接入 GitHub、Google 等 OAuth，再扩展这些表更合适。
+---
 
-## 模块结构
+## 关键技术选型
+
+### Next.js App Router + `proxy.ts` 路由守卫
+
+项目基于 **Next.js 16**，页面路由采用 App Router。未登录访问主应用区时，由根目录 **`proxy.ts`**（Next.js 16 对 Middleware 的演进命名）在请求进入页面前完成鉴权与重定向，避免未授权用户看到受保护布局。
+
+选择在该层只做 **JWT 解码 + 轻量用户存在性校验**（见下文 `session-user`），而不在 proxy 内直接挂载完整 Prisma 查询栈，以降低边缘运行时复杂度；完整会话信息在服务端组件中通过 `auth()` 获取。
+
+### Auth.js v5（`next-auth@5`）+ Credentials Provider
+
+| 方案 | 选型 | 理由 |
+|------|------|------|
+| 认证框架 | Auth.js v5 (`next-auth@5.0.0-beta.31`) | 与 App Router 集成成熟，内置 CSRF、Cookie、signIn/signOut 端点 |
+| 登录方式 | Credentials（邮箱/手机号 + 密码） | 符合当前自建账号体系，无需第三方 IdP |
+| 会话策略 | **JWT**（`session.strategy: "jwt"`） | 不依赖 `@auth/prisma-adapter` 与 `Session` 表，与 Credentials 组合简单 |
+| 密码哈希 | `bcryptjs`，cost **12** | 成熟默认方案，注册与校验均在服务端完成 |
+
+未引入 Prisma Adapter 的原因：当前无 OAuth、无数据库 Session 表；JWT 即可满足「无状态 Cookie 会话 + 服务端 `auth()` 读 session」的需求。后续若接入 GitHub / Google，可再扩展 `Account` 等模型并评估 Adapter。
+
+### Prisma + PostgreSQL
+
+用户账号持久化在 **`User`** 表：`email`、`phone` 均为可选但各自 **唯一**，支持「仅邮箱」「仅手机」「邮箱+手机」三种注册形态。业务实体（`Post`、`Draft`、`Prompt`）通过 `userId` 关联，便于后续按登录用户隔离数据。
+
+### Zod 校验
+
+登录、注册的**最终校验**在服务端通过 **Zod** 完成（`lib/auth/schemas.ts`），客户端表单仅做体验层校验。避免绕过前端直接构造非法请求。
+
+### 客户端 / 服务端模块拆分
+
+| 导入路径 | 运行环境 | 内容 |
+|----------|----------|------|
+| `@/lib/auth` | 服务端 only | `auth`、`getCurrentUser`、schemas、Prisma 相关逻辑 |
+| `@/lib/auth/client` | 客户端 | 仅 `safe-callback-url` 等无 Node 依赖工具 |
+| `@/lib/auth/safe-callback-url` | 同构 | 登录回跳 URL 白名单（登录页 Client 使用） |
+
+`lib/auth/config.ts`、`lib/db/*` 等文件标注 **`import "server-only"`**，防止 Client Component 误导入导致打包解析 `dns` 等 Node 内置模块失败。
+
+---
+
+## 总体架构
+
+```mermaid
+flowchart TB
+  subgraph client [浏览器]
+    LoginPage["/login"]
+    RegisterPage["/register"]
+    UserMenu["UserMenu signOut"]
+    MainUI["(main) 布局 / 首页"]
+  end
+
+  subgraph edge [proxy.ts]
+    JWTDecode["getToken 解码 JWT"]
+    UserCheck["findActiveUserById"]
+    Redirect["重定向 / signOut 清 Cookie"]
+  end
+
+  subgraph api [API Routes]
+    NextAuth["/api/auth/* Auth.js"]
+    RegisterAPI["POST /api/auth/register"]
+  end
+
+  subgraph server [服务端 lib/auth]
+    Config["config.ts authorize + callbacks"]
+    SessionUser["session-user.ts"]
+    Identifier["identifier.ts"]
+  end
+
+  subgraph db [PostgreSQL]
+    UserTable[(User)]
+  end
+
+  LoginPage --> NextAuth
+  RegisterPage --> RegisterAPI
+  RegisterPage --> NextAuth
+  UserMenu --> NextAuth
+  MainUI --> Config
+
+  client --> edge
+  edge --> JWTDecode --> UserCheck --> UserTable
+  edge --> Redirect
+
+  NextAuth --> Config
+  RegisterAPI --> UserTable
+  Config --> Identifier --> UserTable
+  Config --> SessionUser --> UserTable
+```
+
+**请求路径摘要：**
+
+1. **注册**：`POST /api/auth/register` 写库 → 同页 `signIn("credentials")` 建立会话 → 跳转首页。
+2. **登录**：`signIn("credentials")` → `authorize()` 校验 → JWT 写入 Cookie。
+3. **访问受保护页**：`proxy` 校验 token 与用户是否存在 → 否则带安全 `callbackUrl` 跳转 `/login`。
+4. **读当前用户**：服务端 `getCurrentUser()` → `auth()` → `session` callback 回查 DB。
+5. **退出**：`signOut({ callbackUrl: "/login", redirect: true })` → Auth.js 清除会话 → 跳转登录页。
+
+---
+
+## 目录与职责
 
 ```text
 app/
   (auth)/
-    login/page.tsx
-    register/page.tsx
+    login/page.tsx          # 登录 UI，identifier + password
+    register/page.tsx       # 注册 UI，邮箱/手机 + 自动登录
   (main)/
-    page.tsx
-  api/
-    auth/
-      [...nextauth]/route.ts
-      register/route.ts
-lib/
-  auth/
-    config.ts
-    session.ts
-    schemas.ts
-    safe-callback-url.ts
-  db/
-    prisma.ts
-    redis.ts
-proxy.ts
-types/
-  next-auth.d.ts
-prisma/
-  schema.prisma
+    layout.tsx              # 服务端二次鉴权 + DashboardShell
+    page.tsx                # 登录后首页
+  api/auth/
+    [...nextauth]/route.ts  # Auth.js handler（runtime: nodejs）
+    register/route.ts       # 注册 API
+
+components/
+  layout/user-menu.tsx      # 头像菜单 + 安全退出
+  providers/session-provider.tsx  # SessionProvider，供 signOut 等客户端 API
+
+lib/auth/
+  config.ts                 # NextAuth 配置、authorize、jwt/session callbacks
+  session.ts                # getCurrentUser()
+  session-user.ts           # 按 id 回查活跃用户（proxy + session 共用）
+  identifier.ts             # 解析 identifier → 邮箱 | 手机，并查库
+  validators.ts             # 邮箱/手机号格式（含 dev @localhost）
+  schemas.ts                # Zod：credentialsSchema、registerSchema
+  safe-callback-url.ts      # callbackUrl 同站白名单
+  client.ts                 # 客户端安全导出
+  index.ts                  # 服务端 barrel
+
+lib/db/
+  prisma.ts                 # Prisma Client（server-only）
+  redis.ts                  # Redis（预留，认证主路径未依赖）
+
+proxy.ts                    # 路由守卫
+types/next-auth.d.ts        # Session / JWT 类型扩展
+prisma/schema.prisma        # User 模型
+prisma/seed.ts              # 开发管理员账号
 ```
 
-各文件职责如下：
+---
 
-- `lib/auth/config.ts`：Auth.js 核心配置，包含 Credentials Provider、登录校验和 JWT/session 回调。
-- `lib/auth/session.ts`：提供 `getCurrentUser()` 读取当前登录用户。
-- `lib/auth/schemas.ts`：登录与注册的 zod 校验 schema。
-- `lib/auth/safe-callback-url.ts`：登录后回跳 URL 的同站白名单校验。
-- `app/api/auth/[...nextauth]/route.ts`：挂载 Auth.js handler，处理登录、登出、CSRF、callback 等内置认证请求。
-- `app/api/auth/register/route.ts`：自定义注册接口，负责创建邮箱密码用户。
-- `app/(auth)/login/page.tsx`：登录页面，调用 Auth.js `signIn("credentials")`。
-- `app/(auth)/register/page.tsx`：注册页面，先调用注册接口，再自动登录。
-- `app/(main)/page.tsx`：登录后的首页占位。
-- `proxy.ts`：Next.js 16 下的路由守卫入口。
-- `types/next-auth.d.ts`：扩展 `Session` 和 `JWT` 类型，让应用能类型安全地访问用户 ID。
-
-## 数据模型设计
-
-当前 `User` 模型承担认证用户和后续业务数据归属两类职责：
+## 数据模型
 
 ```prisma
 model User {
   id           String   @id @default(cuid())
-  email        String   @unique
+  email        String?  @unique
+  phone        String?  @unique
   passwordHash String?
   name         String?
   image        String?
-  posts        Post[]
-  drafts       Draft[]
-  prompts      Prompt[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         Role     @default(USER)
+  // ... 业务关联 posts / drafts / prompts
 }
 ```
 
-关键设计点：
+设计要点：
 
-- `email` 使用唯一索引，作为邮箱密码登录的账号标识。
-- `passwordHash` 保存密码哈希，不保存明文密码。
-- `passwordHash` 设计为可空，是为了给未来 OAuth 用户留出空间；当前注册接口创建的邮箱密码用户一定会写入该字段。
-- `posts`、`drafts`、`prompts` 保留业务关联，后续内容、草稿、提示词都可以通过 `userId` 归属到当前登录用户。
+- **`email` / `phone` 均可空且唯一**：注册时至少提供其一；登录时用 `identifier` 统一入口解析。
+- **`passwordHash` 可空**：为将来纯 OAuth 用户预留；当前密码用户注册时必写哈希。
+- **`role`**：`USER` | `ADMIN`，写入 JWT，并在 session 回查时同步到前端（如管理员标识）。
 
-## 注册流程
+---
 
-注册由 `app/api/auth/register/route.ts` 提供 `POST /api/auth/register`。
+## 核心模块设计
 
-请求体格式：
+### 1. 统一登录标识（`identifier`）
 
-```json
-{
-  "name": "用户名",
-  "email": "user@example.com",
-  "password": "Password123"
-}
-```
+`lib/auth/identifier.ts` 将用户输入解析为两类之一：
 
-处理流程：
+| 输入特征 | 类型 | 处理 |
+|----------|------|------|
+| 含 `@` | 邮箱 | 转小写，`isValidAuthEmail`（标准邮箱 + 开发环境 `*@localhost`） |
+| 否则 | 手机号 | `normalizePhone`（去非数字、去 `86` 前缀）后校验大陆 11 位 `1[3-9]…` |
 
-1. 解析 JSON 请求体，格式错误直接返回 `400`。
-2. 使用 zod 校验 `name`、`email`、`password`。
-3. 将邮箱转为小写，避免同一邮箱因大小写差异重复注册。
-4. 查询数据库确认邮箱是否已存在。
-5. 邮箱重复时返回 `409`。
-6. 使用 `bcrypt.hash(password, 12)` 生成密码哈希。
-7. 创建用户，并只返回 `id`、`email`、`name`、`image` 等安全字段。
+`authorize()` 与 `findUserByIdentifier()` 按类型分别 `findUnique({ where: { email } })` 或 `{ phone }`。
 
-这里把最终校验放在服务端，是因为客户端表单校验可以被绕过。注册接口也不会返回 `passwordHash`，避免敏感字段进入响应。
+### 2. 注册 API
 
-## 登录流程
+`POST /api/auth/register`：
 
-登录由 Auth.js Credentials Provider 处理，核心逻辑在 `lib/auth/config.ts` 的 `authorize()` 中。
+1. `registerSchema` 校验：`name`、密码长度、**email 与 phone 至少一项**。
+2. 分别检查邮箱 / 手机是否已占用（`409`）。
+3. `bcrypt.hash(password, 12)` 后 `prisma.user.create`。
+4. 响应仅返回安全字段（不含 `passwordHash`）。
 
-处理流程：
+注册页在成功后使用同一 `identifier`（优先邮箱，否则手机号）调用 `signIn("credentials")`，避免用户二次输入。
 
-1. 登录页调用 `signIn("credentials", { email, password, redirect: false })`。
-2. Auth.js 把凭据传给 `authorize()`。
-3. `authorize()` 使用 zod 校验邮箱和密码。
-4. 根据邮箱查询 `User`。
-5. 如果用户不存在，或没有 `passwordHash`，返回 `null`。
-6. 使用 `bcrypt.compare()` 比较输入密码和数据库中的哈希。
-7. 校验通过后返回 Auth.js 用户对象。
-8. Auth.js 写入 JWT session。
+### 3. JWT 会话 + 数据库回查（防「删号仍登录」）
 
-登录失败统一返回 `null`，由 Auth.js 处理为通用登录失败。这样不会向前端暴露“邮箱不存在”或“密码错误”的具体原因，能降低账号枚举风险。
-
-## Session 与用户 ID
-
-当前使用 JWT session：
+仅把 JWT 当作「用户 ID 指针」，**不信任其长期有效表示用户仍合法**：
 
 ```ts
-session: {
-  strategy: "jwt",
-}
-```
-
-选择 JWT 的原因：
-
-- Credentials Provider 不依赖 Auth.js 数据库 session 表。
-- 当前阶段没有引入 Prisma Adapter，也没有 `Session` 表。
-- `proxy.ts` 可以直接在路由边界通过 token 判断登录态，避免把 Prisma 引入 proxy 运行时。
-
-登录成功后，`jwt` callback 会把数据库用户 ID 写入 token：
-
-```ts
+// jwt callback：登录瞬间写入 id、role
 jwt({ token, user }) {
   if (user) {
     token.id = user.id;
+    token.role = user.role;
   }
-
   return token;
+}
+
+// session callback：每次 auth() 读 session 时回查 DB
+async session({ session, token }) {
+  const dbUser = await findActiveUserById(token.id);
+  if (!dbUser) {
+    return { expires: new Date(0).toISOString() }; // 视为未登录
+  }
+  return { ...session, user: { id, email, phone, name, image, role } };
 }
 ```
 
-随后 `session` callback 把 token 中的 ID 同步到 `session.user.id`。`types/next-auth.d.ts` 对 Session 和 JWT 做了类型扩展，确保后续业务代码能安全访问当前用户 ID。
+**`proxy.ts`** 同样调用 `findActiveUserById`：
 
-## 路由守卫
+- 无 token 或未登录 → 跳转 `/login?callbackUrl=…`（`callbackUrl` 经白名单处理）。
+- **有 token 但用户已删除** → 先重定向 `/api/auth/signout?callbackUrl=…`，由 Auth.js 清理 Cookie，再进入登录页。
 
-Next.js 16 中不再使用旧的 `middleware.ts` 命名，本项目使用 `proxy.ts`。
+`app/(main)/layout.tsx` 中 `getCurrentUser()` 为**第二道防线**，无用户时 `redirect("/login")`，避免仅依赖客户端状态渲染主应用壳。
 
-当前守卫规则：
+### 4. 安全退出登录
 
-- 未登录访问受保护页面时，跳转 `/login`。
-- 已登录访问 `/login` 或 `/register` 时，跳转 `/`。
-- `/api/*`、`/_next/static/*`、`/_next/image/*`、`favicon.ico` 和静态文件不经过页面守卫。
-
-需要注意：`app/(main)/page.tsx` 是路由组写法，`(main)` 不会出现在 URL 中。因此首页真实路径是 `/`，不是 `/main`。
-
-当前 matcher：
+`components/layout/user-menu.tsx`（Client Component）：
 
 ```ts
-matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"]
-```
-
-这样可以让 API 路由保持独立，避免注册接口、Auth.js 内置接口或静态资源被误重定向。
-
-## 页面交互
-
-### 登录页
-
-`app/(auth)/login/page.tsx` 是客户端组件，主要职责是收集邮箱和密码，然后调用：
-
-```ts
-signIn("credentials", {
-  email,
-  password,
-  redirect: false,
+await signOut({
+  callbackUrl: "/login",
+  redirect: true,
 });
 ```
 
-使用 `redirect: false` 是为了让页面自己处理失败提示和成功跳转。登录成功后执行：
+- 由 Auth.js 处理 **`/api/auth/signout`**，删除会话 Cookie。
+- `redirect: true` 确保退出后落在登录页，防止仍停留在受保护路由。
+- 外层 `app/(main)/layout` 需 `SessionProvider`（`components/providers/session-provider.tsx`）包裹，以便客户端调用 `signOut`。
 
-```ts
-router.push("/");
-router.refresh();
-```
+退出为**服务端会话失效 + 浏览器 Cookie 清理**，不是仅前端清空状态。
 
-`router.refresh()` 用于刷新服务端组件读取到的 session 状态。
+### 5. 登录后回跳（`safe-callback-url`）
 
-### 注册页
+- **`getSafeCallbackPath`**：供 `proxy` 写入 `callbackUrl`，仅允许同站相对路径，拒绝 `//`、`://`、`\`、编码绕过，且禁止回跳到 `/login`、`/register`。
+- **`resolveSafeCallbackUrl`**：供登录页读取 query，完整 URL 须与当前 `origin` 同源。
 
-`app/(auth)/register/page.tsx` 先在客户端检查两次密码是否一致，再调用 `POST /api/auth/register`。
+避免开放重定向钓鱼。
 
-注册成功后不会让用户再次手动登录，而是复用同一组邮箱和密码调用 `signIn("credentials")` 自动建立会话，然后跳转首页。
+### 6. 路由守卫规则（`proxy.ts`）
+
+| 条件 | 行为 |
+|------|------|
+| 未登录 + 非认证页 | → `/login?callbackUrl=<安全路径>` |
+| 未登录 + token 存在但用户不存在 | → `/api/auth/signout` → 登录页 |
+| 已登录 + `/login` 或 `/register` | → `/` |
+| `/api/*`、静态资源 | 不拦截（matcher 排除） |
+
+认证相关页面目前仅 **`/login`、`/register`** 对访客开放；其余页面路径默认受保护。
+
+---
+
+## 页面与 UI 集成（简要）
+
+登录 / 注册为独立 `(auth)` 路由组；登录后主应用由 `(main)/layout.tsx` 挂载 **`DashboardShell`**（顶栏、侧栏、用户菜单）。用户中心相关的**展示与退出**落在 `UserMenu`；业务首页、编辑器等布局属产品壳层，细节见各 layout 组件，本文不展开 UI 规范。
+
+---
 
 ## 环境变量
 
-认证模块至少依赖：
-
 ```env
-DATABASE_URL=""
-AUTH_SECRET=""
-AUTH_URL=""
+DATABASE_URL=""      # PostgreSQL
+AUTH_SECRET=""       # JWT/Cookie 签名（也可用 NEXTAUTH_SECRET）
+AUTH_URL=""          # 应用对外 URL，须与 dev 端口一致
+REDIS_URL=""         # 基础设施预留，认证主路径未依赖
 ```
 
-本地 Docker 环境通常还需要：
+`.env.example` 中保留 `NEXTAUTH_*` 兼容旧命名；代码优先读取 `AUTH_SECRET`。
 
-```env
-REDIS_URL=""
-```
+---
 
-说明：
+## 安全设计摘要
 
-- `DATABASE_URL` 用于 Prisma 连接 PostgreSQL。
-- `AUTH_SECRET` 用于 Auth.js 加密和校验 session token，必须是足够长的随机字符串。
-- `AUTH_URL` 用于指定当前应用地址。若开发端口不是 `3000`，例如 Next 自动切到 `3001`，这里也要同步改成对应端口，否则可能触发 Auth.js 的 `UntrustedHost` 错误。
-- `.env.example` 保留了 `NEXTAUTH_SECRET` 和 `NEXTAUTH_URL`，用于兼容旧命名；新实现优先使用 `AUTH_SECRET`。
+| 项 | 做法 |
+|----|------|
+| 密码存储 | 仅 `passwordHash`，bcrypt cost 12 |
+| 登录失败 | `authorize` 返回 `null`，统一错误文案，降低账号枚举 |
+| 注册响应 | 不返回 `passwordHash` |
+| 会话失效 | 删用户后 session / proxy 双路径失效 |
+| 回跳 URL | 同站白名单 |
+| 校验位置 | 注册 API、Credentials `authorize` 均以 Zod 为准 |
+| CSRF | Auth.js 内置 signIn/signOut 流程 |
 
-## 安全考虑
+待增强：接口限流、更强密码策略、验证码登录、审计日志等。
 
-当前实现已经覆盖以下基础安全点：
+---
 
-- 明文密码只存在于当前请求作用域，不写入数据库，不返回前端。
-- 密码使用 `bcryptjs` 哈希，成本因子为 `12`。
-- 登录失败返回通用错误，不区分邮箱不存在和密码错误。
-- 注册和登录都在服务端做最终校验。
-- 注册响应只选择安全字段，避免泄露 `passwordHash`。
-- 路由守卫只解码 JWT，不访问数据库，降低 proxy 运行时复杂度。
-
-后续可增强的点：
-
-- 增加登录和注册接口的限流。
-- 增加密码强度规则，例如必须包含数字、大小写字母或特殊字符。
-- 增加邮箱验证流程。
-- 增加忘记密码和重置密码流程。
-- 增加审计日志，记录关键认证事件。
-
-## 开发管理员账号
-
-项目提供 seed 脚本，用于本地开发时快速创建管理员测试账号。
+## 开发账号
 
 ```bash
 npm run db:seed
 ```
 
-默认账号（可通过 `.env` 覆盖）：
-
-| 字段 | 默认值 |
-|------|--------|
+| 字段 | 默认 |
+|------|------|
 | 邮箱 | `admin@localhost` |
 | 密码 | `Admin12345` |
-| 用户名 | `管理员` |
 | 角色 | `ADMIN` |
 
-环境变量：
+可通过 `DEV_ADMIN_EMAIL`、`DEV_ADMIN_PASSWORD`、`DEV_ADMIN_NAME` 覆盖。seed 使用 `upsert`，可重复执行。
 
-```env
-DEV_ADMIN_EMAIL="admin@localhost"
-DEV_ADMIN_PASSWORD="Admin12345"
-DEV_ADMIN_NAME="管理员"
-```
+---
 
-seed 使用 `upsert`，重复执行会更新密码和角色，不会重复插入。普通用户通过注册接口创建，角色默认为 `USER`。
-
-登录后首页会显示 `（管理员）` 标识；若仍显示旧用户名，请先清除浏览器 Cookie 或使用无痕窗口重新登录。
-
-## 运行与验证
-
-首次运行或数据模型变更后执行：
+## 本地运行与验证
 
 ```bash
 npm install
 npm run docker:up
 npm run db:generate
 npm run db:push
+npm run db:seed   # 可选
 npm run dev
 ```
 
-手动验证路径：
+建议验证路径：
 
-1. 访问 `/`，未登录时应跳转 `/login?callbackUrl=%2F`。
-2. 访问 `/register` 注册新账号。
-3. 注册成功后应自动登录并跳转 `/`。
-4. 退出或清理 cookie 后，使用同一账号在 `/login` 登录。
-5. 登录状态下访问 `/login` 或 `/register`，应自动跳转 `/`。
+1. 未登录访问 `/` → 跳转 `/login`。
+2. `/register`：仅手机 / 仅邮箱 / 两者兼有注册 → 自动登录 → `/`。
+3. `/login`：邮箱或手机号 + 密码登录。
+4. 顶栏用户菜单 **退出登录** → `/login`；再访问 `/` 应再次要求登录。
+5. 已登录访问 `/login`、`/register` → 跳转 `/`。
+6. （可选）删除 DB 中用户后，带旧 Cookie 访问 → 应经 signOut 清理后回到登录页。
 
-已执行过的自动验证包括：
+---
 
-- `npm run db:generate`
-- `npm run db:push`
-- `npm run lint`
-- `npm run build`
-- HTTP 级别注册、登录、重定向验证
+## 当前边界与后续扩展
 
-## 当前边界
+**本分支有意保持收敛：**
 
-当前认证模块是“邮箱密码登录 MVP”，有意保持实现收敛：
+- 无短信 / 邮箱验证码，仅为「标识 + 密码」。
+- 无 OAuth、无忘记密码、无邮箱验证流程。
+- 无独立「用户中心」资料页（除顶栏菜单与占位首页壳）。
+- 无基于 `role` 的细粒度路由 ACL（仅数据字段与管理员展示预留）。
 
-- 不包含 OAuth 登录。
-- 不包含邮箱验证。
-- 不包含忘记密码。
-- 不包含数据库 session。
-- 不包含角色权限系统。
-- 不包含用户设置页或退出按钮组件。
+**后续分支可扩展：**
 
-这些能力可以在后续分支逐步扩展，而不是在第一版认证闭环中一次性引入。
+- OAuth + Prisma Adapter + `Account` 表。
+- 短信验证码 Provider 或二次验证。
+- 用户资料、改密、注销账号。
+- Redis 限流、登录审计、Session 吊销列表。
+
+---
+
+## 相关文件索引
+
+| 能力 | 主要文件 |
+|------|----------|
+| Auth 配置与会话回调 | `lib/auth/config.ts` |
+| 当前用户 | `lib/auth/session.ts` |
+| 用户存在性回查 | `lib/auth/session-user.ts` |
+| 标识解析 | `lib/auth/identifier.ts`、`lib/auth/validators.ts` |
+| 校验 Schema | `lib/auth/schemas.ts` |
+| 注册 | `app/api/auth/register/route.ts` |
+| Auth 路由 | `app/api/auth/[...nextauth]/route.ts` |
+| 路由守卫 | `proxy.ts` |
+| 安全退出 | `components/layout/user-menu.tsx` |
+| 类型扩展 | `types/next-auth.d.ts` |
