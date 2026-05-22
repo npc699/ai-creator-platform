@@ -7,12 +7,33 @@ import { useSearchParams } from "next/navigation";
 import {
   buildHomeQuery,
   FEED_SORT_OPTIONS,
-  getFeedChannelLabel,
   parseFeedChannel,
   parseFeedSort,
 } from "@/lib/feed/params";
-import { btnSoft, btnSoftActive, surfaceSoft } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
+
+function feedSortTabClass(isActive: boolean) {
+  return cn(
+    "group relative inline-flex h-10 items-center justify-center px-4 text-sm transition-colors duration-200 ease-out",
+    isActive ? "font-semibold" : "font-medium"
+  );
+}
+
+function feedSortLabelClass(isActive: boolean) {
+  return cn(
+    "transition-colors duration-200 ease-out",
+    isActive
+      ? "text-brand-primary"
+      : "text-zinc-900 group-hover:text-brand-primary"
+  );
+}
+
+function feedSortIndicatorClass(isActive: boolean) {
+  return cn(
+    "absolute bottom-0 left-1/2 h-[3px] w-8 origin-center -translate-x-1/2 rounded-full bg-brand-primary transition-transform duration-300 ease-out",
+    isActive ? "scale-x-100" : "scale-x-0"
+  );
+}
 
 type FeedItem = {
   id: string;
@@ -83,43 +104,44 @@ export function HomeFeed() {
   const searchParams = useSearchParams();
   const channel = parseFeedChannel(searchParams.get("channel"));
   const sort = parseFeedSort(searchParams.get("sort"));
-  const channelLabel = getFeedChannelLabel(channel);
 
   return (
     <section className="min-w-0 flex-1">
       <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
         <div className="border-b border-zinc-200/80 px-4 py-3">
-          {channelLabel ? (
-            <p className="mb-2 text-xs font-medium text-brand-primary">
-              {channelLabel}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            {FEED_SORT_OPTIONS.map(({ sort: sortKey, label }) => (
-              <Link
-                key={sortKey}
-                className={cn(
-                  "rounded-full px-4 py-2 text-sm font-medium transition",
-                  sort === sortKey ? btnSoftActive : btnSoft
-                )}
-                href={buildHomeQuery({ channel, sort: sortKey })}
-              >
-                {label}
-              </Link>
-            ))}
-          </div>
+          <nav
+            aria-label="内容筛选"
+            className="flex flex-wrap items-center gap-6"
+          >
+            {FEED_SORT_OPTIONS.map(({ sort: sortKey, label }) => {
+              const isActive = sort === sortKey;
+
+              return (
+                <Link
+                  key={sortKey}
+                  aria-current={isActive ? "page" : undefined}
+                  className={feedSortTabClass(isActive)}
+                  href={buildHomeQuery({ channel, sort: sortKey })}
+                >
+                  <span className={feedSortLabelClass(isActive)}>{label}</span>
+                  <span
+                    aria-hidden
+                    className={feedSortIndicatorClass(isActive)}
+                  />
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
         <div className="space-y-4 p-4">
           {feedItems.map((item) => (
             <article
               key={item.id}
-              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-brand-border hover:shadow-md"
+              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-zinc-300 hover:shadow-md"
             >
               <div className="flex items-center gap-3">
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${surfaceSoft}`}
-                >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-sm font-semibold text-zinc-600">
                   {item.author.slice(0, 1)}
                 </span>
                 <div>
@@ -138,7 +160,7 @@ export function HomeFeed() {
                   {item.tags.map((tag) => (
                     <span
                       key={tag}
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${surfaceSoft}`}
+                      className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600"
                     >
                       {tag}
                     </span>

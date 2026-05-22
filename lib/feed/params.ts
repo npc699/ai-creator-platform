@@ -32,15 +32,18 @@ export function parseFeedSort(value: string | null): FeedSort {
   return "recommend";
 }
 
-/** 组装首页 URL，保留 channel 与 sort 组合（供侧栏、Feed 筛选联动） */
+/** 组装首页 URL，保留 channel、sort、topic 组合（供侧栏、Feed、话题链接联动） */
 export function buildHomeQuery(options: {
   channel?: FeedChannelParam;
   sort?: FeedSort;
+  /** 话题标识，后期可改为独立路由 /topics/[id] */
+  topic?: string;
 }): string {
   const params = new URLSearchParams();
   if (options.channel) params.set("channel", options.channel);
   const sort = options.sort ?? "recommend";
   if (sort !== "recommend") params.set("sort", sort);
+  if (options.topic) params.set("topic", options.topic);
   const query = params.toString();
   return query ? `/?${query}` : "/";
 }
