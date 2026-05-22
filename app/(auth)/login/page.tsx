@@ -6,7 +6,12 @@ import { signIn } from "next-auth/react";
 import React, { useState } from "react";
 
 import { resolveSafeCallbackUrl } from "@/lib/auth/safe-callback-url";
-import { btnSoft } from "@/lib/utils/brand";
+import {
+  authEyebrowClass,
+  authInputClass,
+  authLinkClass,
+  authSubmitButtonClass,
+} from "@/lib/utils/auth-form";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,12 +49,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="auth-page flex min-h-screen items-center justify-center bg-white px-6 py-12 dark:bg-zinc-950">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div>
-          <p className="text-sm font-medium text-brand-primary">
-            AI Creator Platform
-          </p>
+          <p className={authEyebrowClass}>AI Creator Platform</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">
             登录账号
           </h1>
@@ -66,7 +69,7 @@ export default function LoginPage() {
             <input
               required
               autoComplete="username"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="identifier"
               name="identifier"
               onChange={(event) => setIdentifier(event.target.value)}
@@ -83,7 +86,7 @@ export default function LoginPage() {
             <input
               required
               autoComplete="current-password"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="password"
               minLength={6}
               name="password"
@@ -96,7 +99,7 @@ export default function LoginPage() {
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <button
-            className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${btnSoft}`}
+            className={authSubmitButtonClass}
             disabled={isSubmitting}
             type="submit"
           >
@@ -106,10 +109,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
           还没有账号？{" "}
-          <Link
-            className="font-medium text-brand-primary hover:text-blue-600"
-            href="/register"
-          >
+          <Link className={authLinkClass} href="/register">
             去注册
           </Link>
         </p>

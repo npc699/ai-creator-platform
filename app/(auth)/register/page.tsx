@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { type FormEvent, useState } from "react";
 
-import { btnSoft } from "@/lib/utils/brand";
+import {
+  authEyebrowClass,
+  authInputClass,
+  authLinkClass,
+  authSubmitButtonClass,
+} from "@/lib/utils/auth-form";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -75,12 +80,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="auth-page flex min-h-screen items-center justify-center bg-white px-6 py-12 dark:bg-zinc-950">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
         <div>
-          <p className="text-sm font-medium text-brand-primary">
-            AI Creator Platform
-          </p>
+          <p className={authEyebrowClass}>AI Creator Platform</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight">
             创建账号
           </h1>
@@ -97,7 +100,7 @@ export default function RegisterPage() {
             <input
               required
               autoComplete="name"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="name"
               maxLength={20}
               name="name"
@@ -113,7 +116,7 @@ export default function RegisterPage() {
             </label>
             <input
               autoComplete="email"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
@@ -129,7 +132,7 @@ export default function RegisterPage() {
             </label>
             <input
               autoComplete="tel"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="phone"
               name="phone"
               onChange={(event) => setPhone(event.target.value)}
@@ -146,7 +149,7 @@ export default function RegisterPage() {
             <input
               required
               autoComplete="new-password"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="password"
               maxLength={32}
               minLength={6}
@@ -164,7 +167,7 @@ export default function RegisterPage() {
             <input
               required
               autoComplete="new-password"
-              className="w-full rounded-lg border border-zinc-300 bg-transparent px-3 py-2 outline-none transition focus:border-brand-primary focus:ring-2 focus:ring-brand-surface dark:border-zinc-700"
+              className={authInputClass}
               id="confirmPassword"
               maxLength={32}
               minLength={6}
@@ -178,7 +181,7 @@ export default function RegisterPage() {
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
           <button
-            className={`w-full rounded-lg px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 ${btnSoft}`}
+            className={authSubmitButtonClass}
             disabled={isSubmitting}
             type="submit"
           >
@@ -188,10 +191,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
           已有账号？{" "}
-          <Link
-            className="font-medium text-brand-primary hover:text-blue-600"
-            href="/login"
-          >
+          <Link className={authLinkClass} href="/login">
             去登录
           </Link>
         </p>
