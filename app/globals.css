@@ -83,6 +83,16 @@ a {
     line-height: 1.8;
   }
 
+  /* AI 流式生成待确认内容：浅蓝底 + 左侧强调线，接收后移除该样式。 */
+  .tiptap-editor .ai-generated-text,
+  .ProseMirror .ai-generated-text {
+    background-color: #eff6ff;
+    border-radius: 0.2rem;
+    box-decoration-break: clone;
+    box-shadow: inset 3px 0 0 #3b82f6;
+    padding: 0.05em 0.2em 0.05em 0.45em;
+  }
+
   .tiptap-editor h1,
   .tiptap-editor h2,
   .tiptap-editor h3 {

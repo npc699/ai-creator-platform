@@ -205,7 +205,10 @@ export function Toolbar({ editor }: ToolbarProps) {
   }, [editor]);
 
   return (
-    <div className="border-b border-zinc-200/80 bg-white/90 px-5 py-3">
+    <div
+      className="border-b border-zinc-200/80 bg-white/90 px-5 py-3"
+      data-editor-toolbar
+    >
       <div className="flex flex-wrap items-center justify-center gap-3">
         {toolbarGroups.map((group, groupIndex) => (
           <div className="flex items-center gap-1" key={groupIndex}>

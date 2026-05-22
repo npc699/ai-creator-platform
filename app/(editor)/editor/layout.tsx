@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
+import { EditorProvider } from "@/components/editor/editor-context";
 import { cn } from "@/lib/utils";
 import { btnSoftActive } from "@/lib/utils/brand";
 
@@ -25,7 +27,6 @@ const assistantTabs = [
   { label: "素材库", icon: ImageIcon },
 ] as const;
 
-const quickActions = ["润色当前段落", "扩写选中内容", "精简压缩", "内容审核"];
 // 右侧辅助面板先用静态数据承载交互，后续接 Prompt / 素材接口后替换为真实列表。
 const promptTemplates = ["产品测评文章", "小红书种草文", "行业趋势分析"];
 const assetItems = ["封面图", "产品截图", "数据图表"];
@@ -38,8 +39,9 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
     useState<AssistantTab>("AI 生成");
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="flex flex-col gap-5 border-b border-zinc-200/80 bg-white p-3 lg:flex-row lg:items-center">
+    <EditorProvider>
+      <div className="min-h-screen bg-white">
+        <header className="flex flex-col gap-5 border-b border-zinc-200/80 bg-white p-3 lg:flex-row lg:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <Link
             className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
@@ -70,10 +72,12 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
             发布
           </button>
         </div>
-      </header>
+        </header>
 
-      <div className="grid min-h-[calc(100vh-4.25rem)] grid-cols-1 bg-zinc-50/60 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <main className="min-w-0 bg-[#fdfcf8]">{children}</main>
+        <div className="grid min-h-[calc(100vh-4.25rem)] grid-cols-1 bg-zinc-50/60 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <main className="flex min-h-full min-w-0 flex-col bg-[#fdfcf8]">
+          {children}
+        </main>
 
         <aside className="border-t border-zinc-200/80 bg-white lg:border-l lg:border-t-0">
           <div className="grid h-[61px] grid-cols-3 border-b border-zinc-200/80">
@@ -102,69 +106,7 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
           </div>
 
           <div className="p-5">
-            {activeAssistantTab === "AI 生成" ? (
-              <div className="space-y-5">
-                <section className="rounded-2xl bg-[#fdfcf8] p-4 transition-opacity duration-200">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-900">
-                    <Sparkles className="h-4 w-4 text-brand-primary" />
-                    生成设置
-                  </div>
-
-                  <label className="block text-xs font-medium text-zinc-500">
-                    关键词 / 写作方向
-                    <textarea
-                      className="mt-2 min-h-28 w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm leading-6 text-zinc-800 outline-none transition placeholder:text-zinc-400 focus:border-brand-border focus:ring-2 focus:ring-white"
-                      placeholder="例：AI 写作工具对比，突出效率提升和适用场景..."
-                    />
-                  </label>
-
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <label className="block text-xs font-medium text-zinc-500">
-                      写作风格
-                      <select className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 outline-none">
-                        <option>专业严谨</option>
-                        <option>轻松科普</option>
-                        <option>营销转化</option>
-                      </select>
-                    </label>
-                    <label className="block text-xs font-medium text-zinc-500">
-                      字数
-                      <select className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-800 outline-none">
-                        <option>800字</option>
-                        <option>1200字</option>
-                        <option>2000字</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <button
-                    className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50"
-                    type="button"
-                  >
-                    <Bot className="h-4 w-4" />
-                    开始生成
-                  </button>
-                </section>
-
-                <section>
-                  <h2 className="mb-3 text-sm font-medium text-zinc-500">
-                    快捷操作
-                  </h2>
-                  <div className="space-y-2">
-                    {quickActions.map((action) => (
-                      <button
-                        className="flex w-full items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
-                        key={action}
-                        type="button"
-                      >
-                        <Sparkles className="h-4 w-4 text-zinc-400" />
-                        {action}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              </div>
-            ) : null}
+            {activeAssistantTab === "AI 生成" ? <AiAssistantPanel /> : null}
 
             {activeAssistantTab === "Prompt 库" ? (
               <section className="space-y-3 transition-opacity duration-200">
@@ -205,7 +147,8 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
             ) : null}
           </div>
         </aside>
+        </div>
       </div>
-    </div>
+    </EditorProvider>
   );
 }
