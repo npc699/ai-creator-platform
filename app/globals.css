@@ -44,6 +44,259 @@ a {
   text-decoration: none;
 }
 
+/*
+ * 编辑器内链接样式必须写在 @layer 之外。
+ * 上方全局 a 规则未分层，优先级高于 @layer components，否则会只剩 pointer 而无下划线/蓝色。
+ */
+.tiptap-editor a,
+.ProseMirror a {
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tiptap-editor a:hover,
+.ProseMirror a:hover {
+  color: #1d4ed8;
+}
+
+/*
+ * TipTap 编辑器正文排版。
+ * 放进 @layer components 保证级联顺序高于 Tailwind v4 的 base 层（preflight），
+ * 否则 h1/h2/h3、ul/ol、blockquote 会被 preflight 重置为和段落一样的外观。
+ */
+@layer components {
+  .tiptap-editor {
+    color: #18181b;
+    font-size: 1.0625rem;
+    line-height: 1.8;
+  }
+
+  .tiptap-editor > * + * {
+    margin-top: 1rem;
+  }
+
+  .tiptap-editor p {
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.8;
+  }
+
+  .tiptap-editor h1,
+  .tiptap-editor h2,
+  .tiptap-editor h3 {
+    color: #09090b;
+    line-height: 1.3;
+    margin: 1.75rem 0 0.75rem;
+  }
+
+  .tiptap-editor h1 {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .tiptap-editor h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  .tiptap-editor h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+
+  .tiptap-editor strong {
+    font-weight: 700;
+  }
+
+  .tiptap-editor em {
+    font-style: italic;
+  }
+
+  .tiptap-editor u {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .tiptap-editor img {
+    border-radius: 0.5rem;
+    display: block;
+    height: auto;
+    margin: 1rem 0;
+    max-width: 100%;
+  }
+
+  .tiptap-editor blockquote {
+    border-left: 4px solid #a78bfa;
+    background: #faf5ff;
+    color: #52525b;
+    margin: 1.5rem 0;
+    padding: 0.5rem 1.25rem;
+  }
+
+  .tiptap-editor blockquote p {
+    margin: 0;
+  }
+
+  .tiptap-editor ul,
+  .tiptap-editor ol {
+    margin: 0.75rem 0;
+    padding-left: 1.75rem;
+  }
+
+  .tiptap-editor ul {
+    list-style: disc;
+  }
+
+  .tiptap-editor ol {
+    list-style: decimal;
+  }
+
+  .tiptap-editor ul ul {
+    list-style: circle;
+  }
+
+  .tiptap-editor ol ol {
+    list-style: lower-alpha;
+  }
+
+  .tiptap-editor li {
+    margin: 0.25rem 0;
+    padding-left: 0.25rem;
+  }
+
+  .tiptap-editor li > p {
+    margin: 0;
+    display: inline;
+  }
+
+  .tiptap-editor hr {
+    border: 0;
+    border-top: 1px solid #d4d4d8;
+    margin: 2rem 0;
+  }
+
+  .tiptap-editor code {
+    background: #f4f4f5;
+    border-radius: 0.25rem;
+    color: #1e293b;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.95em;
+    padding: 0.1rem 0.35rem;
+  }
+
+  .tiptap-editor pre {
+    background: #18181b;
+    border-radius: 0.5rem;
+    color: #fafafa;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.95em;
+    line-height: 1.6;
+    margin: 1rem 0;
+    overflow-x: auto;
+    padding: 0.75rem 1rem;
+  }
+
+  .tiptap-editor pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+  }
+
+  /*
+   * 表格：resizable 模式下 TipTap 用 .tableWrapper 包裹 table，并给 table 写 inline 像素宽度。
+   * 需强制铺满编辑区，否则会出现“有留白但看不见表格”的现象。
+   */
+  .tiptap-editor .tableWrapper {
+    margin: 1.25rem 0;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  .tiptap-editor .tableWrapper > table {
+    border-collapse: collapse;
+    box-shadow: inset 0 0 0 1px #d4d4d8;
+    /* 覆盖 TableView 写入的 inline 像素宽度（默认仅约 75px） */
+    min-width: 100% !important;
+    table-layout: fixed;
+    width: 100% !important;
+  }
+
+  .tiptap-editor table {
+    border-collapse: collapse;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .tiptap-editor .tableWrapper th,
+  .tiptap-editor .tableWrapper td,
+  .tiptap-editor th,
+  .tiptap-editor td {
+    border: 1px solid #d4d4d8;
+    box-sizing: border-box;
+    min-height: 2.5rem;
+    min-width: 5rem;
+    padding: 0.5rem 0.75rem;
+    position: relative;
+    vertical-align: top;
+  }
+
+  .tiptap-editor .tableWrapper th,
+  .tiptap-editor th {
+    background: #f4f4f5;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  .tiptap-editor .tableWrapper td,
+  .tiptap-editor td {
+    background: #ffffff;
+  }
+
+  .tiptap-editor .tableWrapper th > p,
+  .tiptap-editor .tableWrapper td > p,
+  .tiptap-editor th > p,
+  .tiptap-editor td > p {
+    margin: 0;
+    min-height: 1.25rem;
+  }
+
+  /* TipTap 选中表格单元格时的高亮 */
+  .tiptap-editor .selectedCell::after {
+    background: rgba(59, 130, 246, 0.12);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+  }
+
+  /* 列宽调整把手 */
+  .tiptap-editor .column-resize-handle {
+    background: #3b82f6;
+    bottom: -2px;
+    pointer-events: none;
+    position: absolute;
+    right: -2px;
+    top: 0;
+    width: 3px;
+  }
+
+  .tiptap-editor.resize-cursor {
+    cursor: col-resize;
+  }
+
+  /* Placeholder 在空段落上以伪元素方式显示提示文本 */
+  .tiptap-editor p.is-editor-empty:first-child::before {
+    color: #a1a1aa;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
 /* 认证页：覆盖浏览器自动填充带来的浅蓝/淡黄输入框背景 */
 .auth-page input:-webkit-autofill,
 .auth-page input:-webkit-autofill:hover,
