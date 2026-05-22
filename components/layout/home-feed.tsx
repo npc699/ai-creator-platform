@@ -1,12 +1,18 @@
 "use client";
 
 import { Eye, Heart } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
+import {
+  buildHomeQuery,
+  FEED_SORT_OPTIONS,
+  getFeedChannelLabel,
+  parseFeedChannel,
+  parseFeedSort,
+} from "@/lib/feed/params";
 import { btnSoft, btnSoftActive, surfaceSoft } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
-
-const tabs = ["推荐", "最新", "热点", "爆文"] as const;
 
 type FeedItem = {
   id: string;
@@ -55,7 +61,7 @@ const baseFeedItems: FeedItem[] = [
   },
 ];
 
-// 测试滚动布局用的占位数据，联调完成后可删除或改回接口数据
+// 测试滚动布局用的占位数据，联调完成后由 channel + sort 驱动接口请求
 const feedItems: FeedItem[] = [
   ...baseFeedItems,
   ...Array.from({ length: 15 }, (_, index) => {
@@ -74,26 +80,32 @@ const feedItems: FeedItem[] = [
 ];
 
 export function HomeFeed() {
-  const [activeTab, setActiveTab] =
-    useState<(typeof tabs)[number]>("推荐");
+  const searchParams = useSearchParams();
+  const channel = parseFeedChannel(searchParams.get("channel"));
+  const sort = parseFeedSort(searchParams.get("sort"));
+  const channelLabel = getFeedChannelLabel(channel);
 
   return (
     <section className="min-w-0 flex-1">
       <div className="overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-sm">
         <div className="border-b border-zinc-200/80 px-4 py-3">
+          {channelLabel ? (
+            <p className="mb-2 text-xs font-medium text-brand-primary">
+              {channelLabel}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
+            {FEED_SORT_OPTIONS.map(({ sort: sortKey, label }) => (
+              <Link
+                key={sortKey}
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium transition",
-                  activeTab === tab ? btnSoftActive : btnSoft
+                  sort === sortKey ? btnSoftActive : btnSoft
                 )}
-                onClick={() => setActiveTab(tab)}
-                type="button"
+                href={buildHomeQuery({ channel, sort: sortKey })}
               >
-                {tab}
-              </button>
+                {label}
+              </Link>
             ))}
           </div>
         </div>

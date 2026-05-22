@@ -12,8 +12,14 @@ import {
   TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
+import {
+  buildHomeQuery,
+  parseFeedChannel,
+  parseFeedSort,
+  type FeedChannelParam,
+} from "@/lib/feed/params";
 import {
   bgBrandSurface,
   borderBrandSoft,
@@ -28,10 +34,16 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-const mainNav: NavItem[] = [
-  { label: "首页", href: "/", icon: Home },
-  { label: "热点榜单", href: "/?tab=hot", icon: TrendingUp },
-  { label: "爆文榜单", href: "/?tab=viral", icon: Flame },
+type MainNavItem = {
+  label: string;
+  channel: FeedChannelParam;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const mainNavItems: MainNavItem[] = [
+  { label: "首页", channel: null, icon: Home },
+  { label: "热点榜单", channel: "hot", icon: TrendingUp },
+  { label: "爆文榜单", channel: "viral", icon: Flame },
 ];
 
 const creationNav: NavItem[] = [
@@ -45,14 +57,101 @@ const toolNav: NavItem[] = [
   { label: "素材库", href: "/assets", icon: FolderOpen },
 ];
 
+function isMainNavActive(
+  pathname: string,
+  searchParams: URLSearchParams,
+  channel: FeedChannelParam
+) {
+  if (pathname !== "/") return false;
+  return parseFeedChannel(searchParams.get("channel")) === channel;
+}
+
+function isNavItemActive(
+  pathname: string,
+  searchParams: URLSearchParams,
+  href: string
+) {
+  const [path, queryString] = href.split("?");
+  const normalizedPath = path || "/";
+
+  if (normalizedPath === "/") {
+    if (pathname !== "/") return false;
+
+    const channel = parseFeedChannel(searchParams.get("channel"));
+    if (!queryString) {
+      return channel === null;
+    }
+
+    const hrefChannel = new URLSearchParams(queryString).get("channel");
+    return channel === hrefChannel;
+  }
+
+  return (
+    pathname === normalizedPath ||
+    pathname.startsWith(`${normalizedPath}/`)
+  );
+}
+
+function MainNavSection({
+  pathname,
+  searchParams,
+}: {
+  pathname: string;
+  searchParams: URLSearchParams;
+}) {
+  const sort = parseFeedSort(searchParams.get("sort"));
+
+  return (
+    <div className="space-y-1">
+      {mainNavItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = isMainNavActive(pathname, searchParams, item.channel);
+        const href = buildHomeQuery({ channel: item.channel, sort });
+
+        return (
+          <Link
+            key={item.label}
+            className={cn(
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
+              isActive ? navSidebarActive : navSidebarIdle
+            )}
+            href={href}
+          >
+            <Icon
+              className={cn(
+                "h-4 w-4 shrink-0 transition-colors duration-200 ease-out",
+                isActive
+                  ? "text-brand-primary"
+                  : "text-zinc-900 group-hover:text-brand-primary"
+              )}
+            />
+            <span
+              className={cn(
+                "transition-colors duration-200 ease-out",
+                isActive
+                  ? "text-brand-primary"
+                  : "text-zinc-900 group-hover:text-brand-primary"
+              )}
+            >
+              {item.label}
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 function NavSection({
   title,
   items,
   pathname,
+  searchParams,
 }: {
   title?: string;
   items: NavItem[];
   pathname: string;
+  searchParams: URLSearchParams;
 }) {
   return (
     <div className="space-y-1">
@@ -63,28 +162,32 @@ function NavSection({
       ) : null}
       {items.map((item) => {
         const Icon = item.icon;
-        const isActive =
-          item.href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(item.href.split("?")[0]);
+        const isActive = isNavItemActive(pathname, searchParams, item.href);
 
         return (
           <Link
             key={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
               isActive ? navSidebarActive : navSidebarIdle
             )}
             href={item.href}
           >
             <Icon
               className={cn(
-                "h-4 w-4 shrink-0",
-                isActive ? "text-brand-primary" : "text-zinc-900"
+                "h-4 w-4 shrink-0 transition-colors duration-200 ease-out",
+                isActive
+                  ? "text-brand-primary"
+                  : "text-zinc-900 group-hover:text-brand-primary"
               )}
             />
             <span
-              className={cn(isActive ? "text-brand-primary" : "text-zinc-900")}
+              className={cn(
+                "transition-colors duration-200 ease-out",
+                isActive
+                  ? "text-brand-primary"
+                  : "text-zinc-900 group-hover:text-brand-primary"
+              )}
             >
               {item.label}
             </span>
@@ -97,19 +200,29 @@ function NavSection({
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   return (
     <aside className="hidden w-56 shrink-0 lg:block xl:w-60">
       <div className="sticky top-20 z-10">
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm">
           <div className="space-y-6">
-            <NavSection items={mainNav} pathname={pathname} />
+            <MainNavSection
+              pathname={pathname}
+              searchParams={searchParams}
+            />
             <NavSection
               items={creationNav}
               pathname={pathname}
+              searchParams={searchParams}
               title="我的创作"
             />
-            <NavSection items={toolNav} pathname={pathname} title="工具" />
+            <NavSection
+              items={toolNav}
+              pathname={pathname}
+              searchParams={searchParams}
+              title="工具"
+            />
 
             <div
               className={cn(
