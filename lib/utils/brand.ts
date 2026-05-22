@@ -28,12 +28,19 @@ export const btnSoftActive = [
 export const navItemIdle =
   "text-brand-muted transition-colors hover:bg-brand-surface hover:text-brand-on-surface";
 
-/** 左侧边栏：常态黑字、无背景 */
-export const navSidebarIdle =
-  "bg-transparent text-zinc-900 transition-colors hover:bg-transparent hover:text-zinc-900";
+/** 左侧边栏：常态 */
+export const navSidebarIdle = [
+  "bg-transparent text-zinc-900",
+  "transition-all duration-200 ease-out",
+  "hover:bg-brand-surface hover:text-brand-primary hover:ring-1 hover:ring-inset hover:ring-brand-border",
+].join(" ");
 
 /** 左侧边栏：选中 */
-export const navSidebarActive = [bgBrandSurface, "text-brand-primary"].join(" ");
+export const navSidebarActive = [
+  bgBrandSurface,
+  "text-brand-primary ring-1 ring-inset ring-brand-border",
+  "transition-all duration-200 ease-out",
+].join(" ");
 
 /** 标签、统计块等表面 */
 export const surfaceSoft = [bgBrandSurface, "text-brand-on-surface"].join(" ");
