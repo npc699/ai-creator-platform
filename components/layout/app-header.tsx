@@ -1,21 +1,22 @@
 import { Bell, Search } from "lucide-react";
 
 import { UserMenu } from "@/components/layout/user-menu";
-import {
-  bgBrandSurface,
-  borderBrandSoft,
-  headerBadge,
-  btnSoft,
-} from "@/lib/utils/brand";
+import { headerBadge } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type AppHeaderProps = {
   displayName: string;
-  subtitle?: string | null;
+  email?: string | null;
+  phone?: string | null;
   isAdmin?: boolean;
 };
 
-export function AppHeader({ displayName, subtitle, isAdmin }: AppHeaderProps) {
+export function AppHeader({
+  displayName,
+  email,
+  phone,
+  isAdmin,
+}: AppHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-sm">
       <div className="relative flex h-16 items-center gap-4 px-4 lg:px-6">
@@ -37,12 +38,7 @@ export function AppHeader({ displayName, subtitle, isAdmin }: AppHeaderProps) {
           <label className="pointer-events-auto relative block w-full">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
             <input
-              className={cn(
-                "w-full rounded-full border py-2 pl-10 pr-4 text-sm text-brand-on-surface outline-none transition",
-                borderBrandSoft,
-                bgBrandSurface,
-                "placeholder:text-brand-muted/70 focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-surface"
-              )}
+              className="w-full rounded-full border border-zinc-200 bg-zinc-50 py-2 pl-10 pr-4 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-300 focus:bg-white focus:ring-2 focus:ring-zinc-100"
               placeholder="搜索内容或创作者"
               type="search"
             />
@@ -52,15 +48,16 @@ export function AppHeader({ displayName, subtitle, isAdmin }: AppHeaderProps) {
         <div className="relative z-10 ml-auto flex shrink-0 items-center gap-3">
           <button
             aria-label="通知"
-            className={cn(btnSoft, "rounded-full border p-2", borderBrandSoft)}
+            className="rounded-full border border-zinc-200 bg-white p-2 text-zinc-600 transition hover:bg-zinc-50"
             type="button"
           >
             <Bell className="h-4 w-4" />
           </button>
           <UserMenu
             displayName={displayName}
+            email={email}
             isAdmin={isAdmin}
-            subtitle={subtitle}
+            phone={phone}
           />
         </div>
       </div>

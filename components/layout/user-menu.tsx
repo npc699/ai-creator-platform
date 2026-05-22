@@ -2,21 +2,49 @@
 
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { borderBrandSoft, headerBadge } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type UserMenuProps = {
   displayName: string;
-  subtitle?: string | null;
+  email?: string | null;
+  phone?: string | null;
   isAdmin?: boolean;
 };
 
-export function UserMenu({ displayName, subtitle, isAdmin }: UserMenuProps) {
+export function UserMenu({
+  displayName,
+  email,
+  phone,
+  isAdmin,
+}: UserMenuProps) {
   const [open, setOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const avatarLabel = displayName.slice(0, 1).toUpperCase();
+
+  // Header 为 sticky 时会限制内部 fixed 遮罩的命中范围，改为监听文档点击关闭。
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -30,7 +58,7 @@ export function UserMenu({ displayName, subtitle, isAdmin }: UserMenuProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         aria-expanded={open}
         aria-haspopup="menu"
@@ -50,24 +78,12 @@ export function UserMenu({ displayName, subtitle, isAdmin }: UserMenuProps) {
         >
           {avatarLabel}
         </span>
-        <span className="hidden text-left sm:block">
-          <span className="block text-sm font-medium text-zinc-900">
-            {displayName}
-          </span>
-          {subtitle ? (
-            <span className="block text-xs text-zinc-500">{subtitle}</span>
-          ) : null}
+        <span className="hidden max-w-32 truncate text-sm font-medium text-zinc-900 sm:block">
+          {displayName}
         </span>
       </button>
 
       {open ? (
-        <>
-          <button
-            aria-label="关闭菜单"
-            className="fixed inset-0 z-10 cursor-default"
-            onClick={() => setOpen(false)}
-            type="button"
-          />
           <div
             className={cn(
               "absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg"
@@ -76,8 +92,11 @@ export function UserMenu({ displayName, subtitle, isAdmin }: UserMenuProps) {
           >
             <div className="border-b border-zinc-100 px-4 py-3">
               <p className="text-sm font-medium text-zinc-900">{displayName}</p>
-              {subtitle ? (
-                <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>
+              {email && email !== displayName ? (
+                <p className="mt-1 break-all text-xs text-zinc-500">{email}</p>
+              ) : null}
+              {phone && phone !== displayName ? (
+                <p className="mt-1 text-xs text-zinc-500">{phone}</p>
               ) : null}
               {isAdmin ? (
                 <p className="mt-1 text-xs font-medium text-brand-primary">管理员</p>
@@ -94,7 +113,6 @@ export function UserMenu({ displayName, subtitle, isAdmin }: UserMenuProps) {
               {isSigningOut ? "退出中..." : "退出登录"}
             </button>
           </div>
-        </>
       ) : null}
     </div>
   );

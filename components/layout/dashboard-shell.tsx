@@ -21,17 +21,8 @@ function getDisplayName(user: DashboardUser) {
   return user.name ?? user.email ?? user.phone ?? "创作者";
 }
 
-function getSubtitle(user: DashboardUser) {
-  if (user.email && user.phone) {
-    return `${user.email} · ${user.phone}`;
-  }
-
-  return user.email ?? user.phone ?? null;
-}
-
 export function DashboardShell({ user, children }: DashboardShellProps) {
   const displayName = getDisplayName(user);
-  const subtitle = getSubtitle(user);
   const isAdmin = user.role === Role.ADMIN;
 
   return (
@@ -39,8 +30,9 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
       <div className="min-h-screen bg-brand-surface/30">
         <AppHeader
           displayName={displayName}
+          email={user.email}
           isAdmin={isAdmin}
-          subtitle={subtitle}
+          phone={user.phone}
         />
         <div className="mx-auto flex w-full max-w-[1440px] items-stretch gap-4 px-4 pb-6 pt-4 lg:px-6">
           <AppSidebar />
