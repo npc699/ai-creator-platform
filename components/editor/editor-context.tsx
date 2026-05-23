@@ -53,6 +53,7 @@ type EditorContextValue = {
   stopGenerate: () => void;
   acceptAiContent: () => void;
   rejectAiContent: () => void;
+  insertImage: (src: string, alt?: string) => boolean;
 };
 
 const EditorContext = createContext<EditorContextValue | null>(null);
@@ -341,6 +342,33 @@ export function EditorProvider({ children }: EditorProviderProps) {
     rejectPendingAi();
   }, [rejectPendingAi]);
 
+  const insertImage = useCallback(
+    (src: string, alt?: string) => {
+      if (!editor) {
+        return false;
+      }
+
+      const trimmedSrc = src.trim();
+      if (!trimmedSrc) {
+        return false;
+      }
+
+      const trimmedAlt = alt?.trim();
+
+      editor
+        .chain()
+        .focus()
+        .setImage({
+          src: trimmedSrc,
+          ...(trimmedAlt ? { alt: trimmedAlt } : {}),
+        })
+        .run();
+
+      return true;
+    },
+    [editor]
+  );
+
   useEffect(() => {
     if (!editor) {
       selectionSnapshotRef.current = null;
@@ -485,11 +513,13 @@ export function EditorProvider({ children }: EditorProviderProps) {
       stopGenerate,
       acceptAiContent,
       rejectAiContent,
+      insertImage,
     }),
     [
       acceptAiContent,
       editor,
       generationError,
+      insertImage,
       isGenerating,
       pendingAiRange,
       registerEditor,

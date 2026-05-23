@@ -13,9 +13,11 @@ import {
 import Link from "next/link";
 
 import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
+import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
+import { AssetLibraryPanel } from "@/components/editor/AssetLibraryPanel";
 import { EditorProvider } from "@/components/editor/editor-context";
 import { cn } from "@/lib/utils";
-import { btnSoftActive } from "@/lib/utils/brand";
+import { btnPrimary, btnSoftActive } from "@/lib/utils/brand";
 
 type EditorLayoutProps = {
   children: ReactNode;
@@ -27,9 +29,8 @@ const assistantTabs = [
   { label: "素材库", icon: ImageIcon },
 ] as const;
 
-// 右侧辅助面板先用静态数据承载交互，后续接 Prompt / 素材接口后替换为真实列表。
+// 右侧辅助面板先用静态数据承载交互，后续接 Prompt 接口后替换为真实列表。
 const promptTemplates = ["产品测评文章", "小红书种草文", "行业趋势分析"];
-const assetItems = ["封面图", "产品截图", "数据图表"];
 
 type AssistantTab = (typeof assistantTabs)[number]["label"];
 
@@ -37,11 +38,14 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
   // 右侧面板保持在布局层，保证 /editor/[id] 二次编辑后仍复用同一套辅助区。
   const [activeAssistantTab, setActiveAssistantTab] =
     useState<AssistantTab>("AI 生成");
+  const activeAssistantTabIndex = assistantTabs.findIndex(
+    (tab) => tab.label === activeAssistantTab
+  );
 
   return (
     <EditorProvider>
-      <div className="min-h-screen bg-white">
-        <header className="flex flex-col gap-5 border-b border-zinc-200/80 bg-white p-3 lg:flex-row lg:items-center">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+        <header className="flex shrink-0 flex-col gap-5 border-b border-zinc-200/80 bg-white p-3 lg:flex-row lg:items-center">
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <Link
             className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
@@ -65,7 +69,7 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
             预览
           </button>
           <button
-            className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-400 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-500"
+            className={`h-9 gap-2 px-4 ${btnPrimary}`}
             type="button"
           >
             <Sparkles className="h-4 w-4" />
@@ -74,13 +78,20 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
         </div>
         </header>
 
-        <div className="grid min-h-[calc(100vh-4.25rem)] grid-cols-1 bg-zinc-50/60 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <main className="flex min-h-full min-w-0 flex-col bg-[#fdfcf8]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/60 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#fdfcf8] lg:min-h-0">
           {children}
         </main>
 
-        <aside className="border-t border-zinc-200/80 bg-white lg:border-l lg:border-t-0">
-          <div className="grid h-[61px] grid-cols-3 border-b border-zinc-200/80">
+        <aside className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-zinc-200/80 bg-white lg:min-h-0 lg:flex-none lg:border-l lg:border-t-0">
+          <div className="relative grid h-[61px] shrink-0 grid-cols-3 border-b border-zinc-200/80">
+            <div
+              aria-hidden
+              className="absolute bottom-0 left-0 h-0.5 w-1/3 bg-brand-primary transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+              style={{
+                transform: `translateX(${Math.max(activeAssistantTabIndex, 0) * 100}%)`,
+              }}
+            />
             {assistantTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeAssistantTab === tab.label;
@@ -89,62 +100,57 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
                 <button
                   aria-pressed={isActive}
                   className={cn(
-                    "inline-flex h-full items-center justify-center gap-2 border-b-2 px-3 text-sm font-medium transition-all duration-200",
+                    "relative z-10 inline-flex h-full items-center justify-center gap-2 px-3 text-sm font-medium transition-colors duration-300 ease-out",
                     isActive
-                      ? "border-b-2 border-brand-primary text-brand-primary"
-                      : "border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-950"
+                      ? "text-brand-primary"
+                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-950"
                   )}
                   key={tab.label}
                   onClick={() => setActiveAssistantTab(tab.label)}
                   type="button"
                 >
-                  <Icon className="hidden h-4 w-4 xl:block" />
+                  <Icon
+                    className={cn(
+                      "hidden h-4 w-4 transition-colors duration-300 ease-out xl:block",
+                      isActive ? "text-brand-primary" : "text-zinc-400"
+                    )}
+                  />
                   {tab.label}
                 </button>
               );
             })}
           </div>
 
-          <div className="p-5">
-            {activeAssistantTab === "AI 生成" ? <AiAssistantPanel /> : null}
+          <div className="min-h-0 flex-1 overflow-y-auto scroll-stable p-5">
+            <AssistantTabPanel
+              activeKey={activeAssistantTab}
+              renderPanel={(tab) => {
+                if (tab === "AI 生成") {
+                  return <AiAssistantPanel />;
+                }
 
-            {activeAssistantTab === "Prompt 库" ? (
-              <section className="space-y-3 transition-opacity duration-200">
-                <h2 className="text-sm font-medium text-zinc-500">
-                  常用 Prompt 模板
-                </h2>
-                {promptTemplates.map((template) => (
-                  <button
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
-                    key={template}
-                    type="button"
-                  >
-                    {template}
-                  </button>
-                ))}
-              </section>
-            ) : null}
+                if (tab === "Prompt 库") {
+                  return (
+                    <section className="space-y-3">
+                      <h2 className="text-sm font-medium text-zinc-500">
+                        常用 Prompt 模板
+                      </h2>
+                      {promptTemplates.map((template) => (
+                        <button
+                          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+                          key={template}
+                          type="button"
+                        >
+                          {template}
+                        </button>
+                      ))}
+                    </section>
+                  );
+                }
 
-            {activeAssistantTab === "素材库" ? (
-              <section className="space-y-3 transition-opacity duration-200">
-                <h2 className="text-sm font-medium text-zinc-500">素材库</h2>
-                <button
-                  className="flex h-28 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-[#fdfcf8] text-sm font-medium text-zinc-500 transition hover:bg-zinc-50"
-                  type="button"
-                >
-                  上传或选择图片素材
-                </button>
-                {assetItems.map((asset) => (
-                  <button
-                    className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
-                    key={asset}
-                    type="button"
-                  >
-                    {asset}
-                  </button>
-                ))}
-              </section>
-            ) : null}
+                return <AssetLibraryPanel />;
+              }}
+            />
           </div>
         </aside>
         </div>

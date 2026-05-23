@@ -14,5 +14,6 @@ export default async function EditorRouteGroupLayout({
     redirect("/login");
   }
 
-  return <div className="min-h-screen bg-zinc-50">{children}</div>;
+  // 沉浸式编辑器占满视口，滚动交给内部编辑区与右侧面板。
+  return <div className="h-screen overflow-hidden bg-zinc-50">{children}</div>;
 }

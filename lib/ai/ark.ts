@@ -1,6 +1,10 @@
 import "server-only";
 
-const DEFAULT_ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
+import {
+  ArkConfigError,
+  ArkUpstreamError,
+  getArkBaseConfig,
+} from "@/lib/ai/ark-config";
 
 export type ArkChatMessage = {
   role: "system" | "user" | "assistant";
@@ -20,43 +24,17 @@ type ArkChatCompletionChunk = {
   }>;
 };
 
-export class ArkConfigError extends Error {
-  readonly code = "ARK_CONFIG_ERROR";
+export { ArkConfigError, ArkUpstreamError } from "@/lib/ai/ark-config";
 
-  constructor(message: string) {
-    super(message);
-    this.name = "ArkConfigError";
-  }
-}
-
-export class ArkUpstreamError extends Error {
-  readonly code = "ARK_UPSTREAM_ERROR";
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "ArkUpstreamError";
-    this.status = status;
-  }
-}
-
-function getArkConfig() {
-  const apiKey = process.env.ARK_API_KEY?.trim();
-  const baseUrl = (process.env.ARK_BASE_URL?.trim() || DEFAULT_ARK_BASE_URL).replace(
-    /\/$/,
-    ""
-  );
+function getArkChatConfig() {
+  const base = getArkBaseConfig();
   const model = process.env.ARK_MODEL?.trim();
-
-  if (!apiKey) {
-    throw new ArkConfigError("未配置 ARK_API_KEY，无法调用火山方舟");
-  }
 
   if (!model) {
     throw new ArkConfigError("未配置 ARK_MODEL（推理接入点 ID），无法调用火山方舟");
   }
 
-  return { apiKey, baseUrl, model };
+  return { ...base, model };
 }
 
 function extractDeltaText(chunk: ArkChatCompletionChunk) {
@@ -72,7 +50,7 @@ export async function* streamArkChat({
   messages,
   signal,
 }: ArkStreamOptions): AsyncGenerator<string, void, unknown> {
-  const { apiKey, baseUrl, model } = getArkConfig();
+  const { apiKey, baseUrl, model } = getArkChatConfig();
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",

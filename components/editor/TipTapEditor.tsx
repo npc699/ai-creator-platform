@@ -114,20 +114,21 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
 
   return (
     <div
-      className="flex min-h-full w-full flex-1 flex-col"
+      className="flex h-full min-h-0 w-full flex-col overflow-hidden"
       onPointerDown={handleWorkspacePointerDown}
     >
       <Toolbar editor={editor} />
       {isGenerating ? (
         <div
           aria-live="polite"
-          className="border-b border-blue-100 bg-blue-50 px-5 py-2 text-center text-xs font-medium text-blue-600"
+          className="shrink-0 border-b border-blue-100 bg-blue-50 px-5 py-2 text-center text-xs font-medium text-blue-600"
         >
           AI 正在生成内容，正文将实时写入编辑器...
         </div>
       ) : null}
 
-      <article className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+      <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
         <div className="mb-8 border-b border-zinc-200 pb-6">
           <input
             aria-label="文章标题"
@@ -167,12 +168,15 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
             </div>
           </div>
         ) : null}
+      </article>
+      </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-zinc-200 pt-5 text-sm text-zinc-500">
+      <div className="shrink-0 border-t border-zinc-200/80 bg-[#fdfcf8] px-6 pb-6 pt-3">
+        <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">
           <span>已选中 {selectedText.length} 字</span>
           <span>已输入 {characterCount} 字</span>
         </div>
-      </article>
+      </div>
     </div>
   );
 }

@@ -44,6 +44,13 @@ a {
   text-decoration: none;
 }
 
+@layer utilities {
+  /* 预留滚动条槽位，避免滚动条出现/消失时挤压内容宽度 */
+  .scroll-stable {
+    scrollbar-gutter: stable;
+  }
+}
+
 /*
  * 编辑器内链接样式必须写在 @layer 之外。
  * 上方全局 a 规则未分层，优先级高于 @layer components，否则会只剩 pointer 而无下划线/蓝色。
@@ -135,6 +142,80 @@ a {
     height: auto;
     margin: 1rem 0;
     max-width: 100%;
+  }
+
+  /*
+   * 可缩放图片：TipTap 外层容器为 display:flex 的块级元素，默认会撑满编辑区宽度。
+   * fit-content 让选中框与手柄区域仅包裹图片实际尺寸。
+   */
+  .tiptap-editor [data-resize-container] {
+    margin: 1rem 0;
+    max-width: 100%;
+    width: fit-content;
+  }
+
+  .tiptap-editor [data-resize-wrapper] {
+    line-height: 0;
+  }
+
+  .tiptap-editor [data-resize-container] img {
+    border-radius: 0.5rem;
+    display: block;
+    margin: 0;
+    max-width: 100%;
+  }
+
+  .tiptap-editor [data-resize-handle] {
+    background: #3b82f6;
+    border: 2px solid #fff;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgb(59 130 246 / 0.35);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+    z-index: 2;
+  }
+
+  .tiptap-editor [data-resize-container]:hover [data-resize-handle],
+  .tiptap-editor .ProseMirror-selectednode[data-resize-container] [data-resize-handle],
+  .tiptap-editor [data-resize-container][data-resize-state="true"] [data-resize-handle] {
+    opacity: 1;
+  }
+
+  .tiptap-editor [data-resize-handle="bottom-right"] {
+    bottom: -5px;
+    cursor: nwse-resize;
+    height: 10px;
+    right: -5px;
+    width: 10px;
+  }
+
+  .tiptap-editor [data-resize-handle="bottom-left"] {
+    bottom: -5px;
+    cursor: nesw-resize;
+    height: 10px;
+    left: -5px;
+    width: 10px;
+  }
+
+  .tiptap-editor [data-resize-handle="top-right"] {
+    cursor: nesw-resize;
+    height: 10px;
+    right: -5px;
+    top: -5px;
+    width: 10px;
+  }
+
+  .tiptap-editor [data-resize-handle="top-left"] {
+    cursor: nwse-resize;
+    height: 10px;
+    left: -5px;
+    top: -5px;
+    width: 10px;
+  }
+
+  .tiptap-editor .ProseMirror-selectednode[data-resize-container] [data-resize-wrapper] {
+    border-radius: 0.5rem;
+    box-shadow: 0 0 0 2px #bfdbfe;
   }
 
   .tiptap-editor blockquote {

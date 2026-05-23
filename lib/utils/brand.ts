@@ -51,3 +51,14 @@ export const textSoftMuted = "text-brand-muted";
 
 /** 软边框（搜索框、通知钮等） */
 export const borderBrandSoft = "border-brand-border";
+
+/** 主操作实心按钮（顶栏发布、存入素材库等） */
+export const btnPrimary = [
+  "inline-flex items-center justify-center rounded-xl",
+  "bg-blue-400 text-sm font-medium text-white shadow-sm",
+  "transition-colors hover:bg-blue-500",
+].join(" ");
+
+/** 主操作按钮禁用态：保持底色，避免 hover 变色 */
+export const btnPrimaryDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-blue-400";

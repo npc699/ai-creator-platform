@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { InsertImageDialog } from "@/components/editor/InsertImageDialog";
 import { cn } from "@/lib/utils";
 
 type ToolbarItem = {
@@ -128,15 +129,6 @@ const toolbarGroups: ToolbarItem[][] = [
   ],
   [
     {
-      label: "插入图片",
-      icon: ImageIcon,
-      action: (editor) => {
-        const url = promptUrl("请输入图片地址", "https://");
-        if (!url) return;
-        editor.chain().focus().setImage({ src: url }).run();
-      },
-    },
-    {
       label: "插入链接",
       icon: LinkIcon,
       action: (editor) => {
@@ -186,6 +178,7 @@ const toolbarGroups: ToolbarItem[][] = [
 
 export function Toolbar({ editor }: ToolbarProps) {
   const [, setEditorStateVersion] = useState(0);
+  const [isInsertImageOpen, setIsInsertImageOpen] = useState(false);
 
   useEffect(() => {
     if (!editor) return;
@@ -205,15 +198,36 @@ export function Toolbar({ editor }: ToolbarProps) {
   }, [editor]);
 
   return (
-    <div
-      className="border-b border-zinc-200/80 bg-white/90 px-5 py-3"
-      data-editor-toolbar
-    >
-      <div className="flex flex-wrap items-center justify-center gap-3">
+    <>
+      <div
+        className="shrink-0 border-b border-zinc-200/80 bg-white/90 px-5 py-3"
+        data-editor-toolbar
+      >
+        <div className="flex flex-wrap items-center justify-center gap-3">
         {toolbarGroups.map((group, groupIndex) => (
           <div className="flex items-center gap-1" key={groupIndex}>
             {groupIndex > 0 ? (
               <div className="mx-2 h-5 w-px bg-zinc-200" />
+            ) : null}
+
+            {groupIndex === 4 ? (
+              <button
+                aria-label="插入图片"
+                className={cn(
+                  "inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-700 transition",
+                  !editor ? "cursor-not-allowed opacity-40" : "hover:bg-zinc-200"
+                )}
+                disabled={!editor}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  if (!editor) return;
+                  setIsInsertImageOpen(true);
+                }}
+                title="插入图片"
+                type="button"
+              >
+                <ImageIcon className="h-4 w-4" />
+              </button>
             ) : null}
 
             {group.map((item) => {
@@ -252,6 +266,11 @@ export function Toolbar({ editor }: ToolbarProps) {
           </div>
         ))}
       </div>
-    </div>
+      </div>
+
+      {isInsertImageOpen ? (
+        <InsertImageDialog onClose={() => setIsInsertImageOpen(false)} />
+      ) : null}
+    </>
   );
 }

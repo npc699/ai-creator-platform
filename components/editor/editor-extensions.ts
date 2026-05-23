@@ -19,6 +19,14 @@ export function createEditorExtensions(): Extensions {
     Image.configure({
       allowBase64: true,
       inline: false,
+      // 角点拖拽可自由改宽高；按住 Shift 可临时锁定宽高比
+      resize: {
+        enabled: true,
+        directions: ["bottom-left", "bottom-right", "top-left", "top-right"],
+        minWidth: 80,
+        minHeight: 80,
+        alwaysPreserveAspectRatio: false,
+      },
     }),
     TableKit.configure({
       table: {

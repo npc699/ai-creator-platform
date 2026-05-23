@@ -1,0 +1,40 @@
+/** 素材库面板文案，集中维护避免编码损坏。 */
+export const assetLibraryCopy = {
+  uploadTitle: "上传图片",
+  uploadHint: "点击或拖拽上传",
+  uploadFormats: "jpg · png · webp · gif · 最大 5MB",
+  uploadReading: "正在读取图片...",
+  uploadFormatOk: (ext: string) => `格式合法（${ext}）`,
+  uploadSizeOk: (size: string) => `文件大小 ${size} ≤ 5MB`,
+  uploadSizeOver: (size: string, max: string) => `文件大小 ${size}，超过 ${max}`,
+  aiGeneratedFileName: (index: number) =>
+    `AI生成_${String(index).padStart(2, "0")}.jpg`,
+  uploadFormatFail: "仅支持 JPG、PNG、WebP、GIF 格式",
+  uploadSizeFail: "图片大小不能超过 5MB",
+  uploadEmpty: "文件为空，请选择有效图片",
+  uploadReadFail: "读取图片失败，请换一张图片重试",
+  uploadEditorNotReady: "编辑器尚未就绪，请稍后重试",
+  uploadPreviewAlt: "待上传图片预览",
+  cancel: "取消",
+
+  aiTitle: "AI 生图",
+  promptLabel: "图片描述",
+  promptHint: "Enter 生成，Shift+Enter 换行",
+  promptPlaceholder:
+    "例：16:9 横图，宫崎骏动画风格，一只田园猫在草地上奔跑...",
+  stopGenerate: "停止生成",
+  generateImage: "生成图片",
+  generateWaitTip: "生图通常需要 10~60 秒，请耐心等待。",
+  previewPlaceholder: "生成结果预览",
+  previewGenerating: "正在生成中，请稍候…",
+  previewAlt: "AI 生成图片预览",
+  saveToLibrary: "存入素材库",
+
+  myAssetsTitle: "我的素材",
+  myAssetsEmpty: "暂无素材，上传或 AI 生图后会显示在这里",
+  myAssetsHoverTip: "悬停可进行插入、重命名或删除",
+  insertToEditor: "插入",
+  renameAsset: "重命名",
+  deleteAsset: "删除",
+  renamePlaceholder: "文件名",
+} as const;
