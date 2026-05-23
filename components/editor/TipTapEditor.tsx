@@ -7,20 +7,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { createEditorExtensions } from "@/components/editor/editor-extensions";
 import { Toolbar } from "@/components/editor/Toolbar";
 import { useEditorContext } from "@/components/editor/editor-context";
+import { createEditorImageHandlers } from "@/lib/editor/editor-image-handlers";
 import { cn } from "@/lib/utils";
-
-// Part 1 阶段先提供一段示例内容，便于验证富文本排版和工具栏状态。
-const defaultContent = `
-  <p>在内容创作领域，AI 写作工具已经成为不可忽视的生产力变量。本文将从生成质量、响应速度、可控性、价格区间四个维度，对市面上主流产品进行横向对比。</p>
-  <blockquote>
-    <p>评测数据来源于真实创作场景，样本量超过 500 篇，测试周期为 30 天。</p>
-  </blockquote>
-  <p>我们将重点关注以下几个核心问题：在相同 Prompt 下，不同工具生成内容的质量差异有多大？在专业垂类领域，哪款工具的表现更为稳定？</p>
-`;
-
-type TipTapEditorProps = {
-  initialContent?: string;
-};
 
 function collapseEditorSelection(editor: Editor) {
   const { from, to } = editor.state.selection;
@@ -32,7 +20,7 @@ function collapseEditorSelection(editor: Editor) {
   editor.chain().setTextSelection(to).run();
 }
 
-export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorProps) {
+export function TipTapEditor() {
   const [characterCount, setCharacterCount] = useState(0);
   const {
     acceptAiContent,
@@ -41,13 +29,19 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
     registerEditor,
     rejectAiContent,
     selectedText,
+    title,
+    setTitle,
+    showNoticeBanner,
+    setImageUploading,
+    isUploadingImage,
   } = useEditorContext();
 
   const extensions = useMemo(() => createEditorExtensions(), []);
 
   const editor = useEditor(
     {
-      content: initialContent,
+      // 初始正文留空，真实内容由 EditorProvider 在 hydrate /api/drafts/latest 之后注入。
+      content: "",
       editorProps: {
         attributes: {
           "aria-label": "文章正文",
@@ -66,6 +60,25 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
     },
     [extensions]
   );
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    const handlers = createEditorImageHandlers({
+      getEditor: () => editor,
+      onUploadingChange: setImageUploading,
+      onUploadError: (message) => showNoticeBanner(message),
+    });
+
+    editor.setOptions({
+      editorProps: {
+        ...editor.options.editorProps,
+        ...handlers,
+      },
+    });
+  }, [editor, setImageUploading, showNoticeBanner]);
 
   useEffect(() => {
     registerEditor(editor);
@@ -89,6 +102,18 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
       editor.off("transaction", syncCharacterCount);
     };
   }, [editor]);
+
+  // 生成结束后把视口滚到待确认内容附近，同时底部操作条始终可见（见下方固定栏）。
+  useEffect(() => {
+    if (!editor || !pendingAiRange) {
+      return;
+    }
+
+    const { to } = pendingAiRange;
+    requestAnimationFrame(() => {
+      editor.chain().focus().setTextSelection(to).scrollIntoView().run();
+    });
+  }, [editor, pendingAiRange]);
 
   const handleWorkspacePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (!editor || isGenerating) {
@@ -126,6 +151,14 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
           AI 正在生成内容，正文将实时写入编辑器...
         </div>
       ) : null}
+      {isUploadingImage ? (
+        <div
+          aria-live="polite"
+          className="shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-2 text-center text-xs font-medium text-amber-700"
+        >
+          图片上传中，请稍候…
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
       <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
@@ -134,20 +167,28 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
             aria-label="文章标题"
             className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-950 outline-none placeholder:text-zinc-300"
             maxLength={100}
+            onChange={(event) => setTitle(event.target.value)}
             onFocus={handleTitleFocus}
             placeholder="请输入标题（100字以内）"
             type="text"
+            value={title}
           />
         </div>
 
         <EditorContent editor={editor} />
+      </article>
+      </div>
 
-        {pendingAiRange ? (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand-border bg-brand-surface px-4 py-3">
+      {pendingAiRange ? (
+        <div
+          aria-live="polite"
+          className="shrink-0 border-t border-brand-border bg-brand-surface/95 px-6 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm"
+        >
+          <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-brand-on-surface">
               AI 已生成待确认内容，接收后保留，撤销将移除本次生成
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 className="inline-flex items-center rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
                 onClick={rejectAiContent}
@@ -167,9 +208,8 @@ export function TipTapEditor({ initialContent = defaultContent }: TipTapEditorPr
               </button>
             </div>
           </div>
-        ) : null}
-      </article>
-      </div>
+        </div>
+      ) : null}
 
       <div className="shrink-0 border-t border-zinc-200/80 bg-[#fdfcf8] px-6 pb-6 pt-3">
         <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-x-4 gap-y-1 text-sm text-zinc-500">

@@ -1,6 +1,13 @@
 "use client";
 
-import { useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from "react";
 
 import {
   CloudUpload,
@@ -22,17 +29,22 @@ import { ImageResolutionPicker } from "@/components/editor/ImageResolutionPicker
 import { useEditorContext } from "@/components/editor/editor-context";
 import { useAiImageGenerate } from "@/components/editor/use-ai-image-generate";
 import {
+  deleteEditorAsset,
+  fetchEditorAssets,
+  registerAiImageAsset,
+  renameEditorAsset,
+  uploadLocalImageAsset,
+  type EditorAsset,
+} from "@/lib/editor/assets-api";
+import {
   formatLocalImageSize,
   LOCAL_IMAGE_ACCEPT,
   LOCAL_IMAGE_MAX_BYTES,
-  readLocalImageAsDataUrl,
   validateLocalImageFile,
 } from "@/lib/editor/local-image";
 import { cn } from "@/lib/utils";
 import { btnPrimary, btnPrimaryDisabled } from "@/lib/utils/brand";
 import type { AiImageSize } from "@/lib/ai/image-schema";
-
-const MAX_LIBRARY_ASSETS = 24;
 
 type LibraryAsset = {
   id: string;
@@ -41,6 +53,16 @@ type LibraryAsset = {
   source: "upload" | "ai";
   createdAt: number;
 };
+
+function toLibraryAsset(asset: EditorAsset): LibraryAsset {
+  return {
+    id: asset.id,
+    name: asset.name,
+    url: asset.url,
+    source: asset.source === "AI" ? "ai" : "upload",
+    createdAt: new Date(asset.createdAt).getTime(),
+  };
+}
 
 type SectionKey = "upload" | "ai" | "assets";
 
@@ -55,7 +77,9 @@ type UploadValidationState = {
 
 type UploadDraft = {
   fileName: string;
-  dataUrl: string;
+  /** ??? blob URL????????????? */
+  previewUrl: string;
+  file: File;
 };
 
 function getFileExtension(filename: string) {
@@ -93,6 +117,8 @@ export function AssetLibraryPanel() {
   const [isReadingLocal, setIsReadingLocal] = useState(false);
   const [renamingAssetId, setRenamingAssetId] = useState<string | null>(null);
   const [renamingValue, setRenamingValue] = useState("");
+  const [assetsError, setAssetsError] = useState<string | null>(null);
+  const [isLoadingAssets, setIsLoadingAssets] = useState(true);
 
   const isEditorReady = Boolean(editor);
   const showPromptPlaceholder = prompt.length === 0;
@@ -102,19 +128,50 @@ export function AssetLibraryPanel() {
     setExpanded((current) => ({ ...current, [key]: !current[key] }));
   };
 
-  const addAsset = (asset: Omit<LibraryAsset, "id" | "createdAt">) => {
+  // ??/??????? blob URL????????
+  useEffect(() => {
+    const previewUrl = uploadDraft?.previewUrl;
+    if (!previewUrl?.startsWith("blob:")) {
+      return;
+    }
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [uploadDraft?.previewUrl]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const list = await fetchEditorAssets();
+        if (!cancelled) {
+          setAssets(list.map(toLibraryAsset));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setAssetsError(error instanceof Error ? error.message : "??????");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingAssets(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const prependAsset = (asset: EditorAsset) => {
+    const mapped = toLibraryAsset(asset);
     setAssets((current) => {
-      if (current.some((item) => item.url === asset.url)) {
+      if (current.some((item) => item.id === mapped.id)) {
         return current;
       }
-
-      const nextItem: LibraryAsset = {
-        ...asset,
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        createdAt: Date.now(),
-      };
-
-      return [nextItem, ...current].slice(0, MAX_LIBRARY_ASSETS);
+      return [mapped, ...current];
     });
   };
 
@@ -175,37 +232,21 @@ export function AssetLibraryPanel() {
     setUploadValidation(null);
   };
 
-  const processLocalFile = async (file: File) => {
+  const processLocalFile = (file: File) => {
     const validation = buildUploadValidation(file);
     setUploadValidation(validation);
-    setUploadDraft(null);
 
     if (validation.errorMessage) {
+      clearUploadDraft();
       return;
     }
 
-    setIsReadingLocal(true);
-
-    try {
-      const dataUrl = await readLocalImageAsDataUrl(file);
-
-      setUploadDraft({
-        fileName: file.name,
-        dataUrl,
-      });
-    } catch (readError) {
-      setUploadValidation({
-        fileName: file.name,
-        formatOk: true,
-        sizeOk: true,
-        formatMessage: validation.formatMessage,
-        sizeMessage: validation.sizeMessage,
-        errorMessage:
-          readError instanceof Error ? readError.message : assetLibraryCopy.uploadReadFail,
-      });
-    } finally {
-      setIsReadingLocal(false);
-    }
+    // ??????????????????? /api/assets ???
+    setUploadDraft({
+      fileName: file.name,
+      previewUrl: URL.createObjectURL(file),
+      file,
+    });
   };
 
   const handleCancelUpload = () => {
@@ -226,19 +267,35 @@ export function AssetLibraryPanel() {
     reset();
   };
 
-  const handleSaveUploadToLibrary = () => {
-    if (!uploadDraft) {
+  const handleSaveUploadToLibrary = async () => {
+    if (!uploadDraft || isReadingLocal) {
       return;
     }
 
-    addAsset({
-      name: uploadDraft.fileName,
-      url: uploadDraft.dataUrl,
-      source: "upload",
-    });
+    setIsReadingLocal(true);
 
-    setExpanded((current) => ({ ...current, assets: true }));
-    clearUploadDraft();
+    try {
+      const asset = await uploadLocalImageAsset(uploadDraft.file);
+      prependAsset(asset);
+      setExpanded((current) => ({ ...current, assets: true }));
+      clearUploadDraft();
+    } catch (saveError) {
+      setUploadValidation({
+        fileName: uploadDraft.fileName,
+        formatOk: true,
+        sizeOk: true,
+        formatMessage: assetLibraryCopy.uploadFormatOk(
+          getFileExtension(uploadDraft.fileName)
+        ),
+        sizeMessage: assetLibraryCopy.uploadSizeOk(
+          formatLocalImageSize(uploadDraft.file.size)
+        ),
+        errorMessage:
+          saveError instanceof Error ? saveError.message : assetLibraryCopy.uploadReadFail,
+      });
+    } finally {
+      setIsReadingLocal(false);
+    }
   };
 
   const handleLocalFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -285,32 +342,44 @@ export function AssetLibraryPanel() {
     }
   };
 
-  const handleSaveToLibrary = () => {
+  const handleSaveToLibrary = async () => {
     if (!activePreviewUrl) {
       return;
     }
 
-    addAsset({
-      name: nextAiAssetName(assets),
-      url: activePreviewUrl,
-      source: "ai",
-    });
-
-    setExpanded((current) => ({ ...current, assets: true }));
-    setPreviewUrl(null);
-    setPrompt("");
+    try {
+      const asset = await registerAiImageAsset(
+        nextAiAssetName(assets),
+        activePreviewUrl
+      );
+      prependAsset(asset);
+      setExpanded((current) => ({ ...current, assets: true }));
+      setPreviewUrl(null);
+      setPrompt("");
+    } catch (saveError) {
+      setAssetsError(
+        saveError instanceof Error ? saveError.message : "???????"
+      );
+    }
   };
 
   const handleInsert = (url: string) => {
     insertImage(url);
   };
 
-  const handleDeleteAsset = (id: string) => {
-    setAssets((current) => current.filter((item) => item.id !== id));
+  const handleDeleteAsset = async (id: string) => {
+    try {
+      await deleteEditorAsset(id);
+      setAssets((current) => current.filter((item) => item.id !== id));
 
-    if (renamingAssetId === id) {
-      setRenamingAssetId(null);
-      setRenamingValue("");
+      if (renamingAssetId === id) {
+        setRenamingAssetId(null);
+        setRenamingValue("");
+      }
+    } catch (deleteError) {
+      setAssetsError(
+        deleteError instanceof Error ? deleteError.message : "??????"
+      );
     }
   };
 
@@ -319,7 +388,7 @@ export function AssetLibraryPanel() {
     setRenamingValue(item.name);
   };
 
-  const handleCommitRename = (id: string) => {
+  const handleCommitRename = async (id: string) => {
     const trimmed = renamingValue.trim();
 
     if (!trimmed) {
@@ -328,11 +397,20 @@ export function AssetLibraryPanel() {
       return;
     }
 
-    setAssets((current) =>
-      current.map((item) => (item.id === id ? { ...item, name: trimmed } : item))
-    );
-    setRenamingAssetId(null);
-    setRenamingValue("");
+    try {
+      const updated = await renameEditorAsset(id, trimmed);
+      setAssets((current) =>
+        current.map((item) =>
+          item.id === id ? toLibraryAsset(updated) : item
+        )
+      );
+      setRenamingAssetId(null);
+      setRenamingValue("");
+    } catch (renameError) {
+      setAssetsError(
+        renameError instanceof Error ? renameError.message : "?????"
+      );
+    }
   };
 
   const handleCancelRename = () => {
@@ -449,7 +527,7 @@ export function AssetLibraryPanel() {
               <img
                 alt={uploadDraft.fileName || assetLibraryCopy.uploadPreviewAlt}
                 className="max-h-44 w-full object-contain"
-                src={uploadDraft.dataUrl}
+                src={uploadDraft.previewUrl}
               />
             </div>
             <p className="mt-2 truncate text-center text-xs text-zinc-500">{uploadDraft.fileName}</p>
@@ -466,14 +544,17 @@ export function AssetLibraryPanel() {
                 {assetLibraryCopy.cancel}
               </button>
               <button
-                className={cn(btnPrimary, "px-3 py-2")}
-                onClick={handleSaveUploadToLibrary}
+                className={cn(btnPrimary, "px-3 py-2", isReadingLocal && "opacity-60")}
+                disabled={isReadingLocal}
+                onClick={() => {
+                  void handleSaveUploadToLibrary();
+                }}
                 onPointerDown={(event) => {
                   event.preventDefault();
                 }}
                 type="button"
               >
-                {assetLibraryCopy.saveToLibrary}
+                {isReadingLocal ? assetLibraryCopy.savingToLibrary : assetLibraryCopy.saveToLibrary}
               </button>
             </div>
           </>
@@ -585,7 +666,9 @@ export function AssetLibraryPanel() {
             <button
               className={cn(btnPrimary, btnPrimaryDisabled, "px-3 py-2")}
               disabled={isGenerating}
-              onClick={handleSaveToLibrary}
+              onClick={() => {
+                void handleSaveToLibrary();
+              }}
               onPointerDown={(event) => {
                 event.preventDefault();
               }}
@@ -604,7 +687,12 @@ export function AssetLibraryPanel() {
         onToggle={() => toggleSection("assets")}
         title={assetLibraryCopy.myAssetsTitle}
       >
-        {assets.length === 0 ? (
+        {assetsError ? (
+          <p className="py-4 text-center text-xs leading-5 text-red-600">{assetsError}</p>
+        ) : null}
+        {isLoadingAssets ? (
+          <p className="py-6 text-center text-xs leading-5 text-zinc-400">??????</p>
+        ) : assets.length === 0 ? (
           <p className="py-6 text-center text-xs leading-5 text-zinc-400">
             {assetLibraryCopy.myAssetsEmpty}
           </p>
@@ -660,7 +748,9 @@ export function AssetLibraryPanel() {
                           </button>
                           <button
                             className="inline-flex w-full max-w-[7.5rem] items-center justify-center gap-1 rounded-lg bg-red-500 px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-red-600"
-                            onClick={() => handleDeleteAsset(item.id)}
+                            onClick={() => {
+                              void handleDeleteAsset(item.id);
+                            }}
                             onPointerDown={(event) => {
                               event.preventDefault();
                             }}

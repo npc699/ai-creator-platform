@@ -17,7 +17,8 @@ export function createEditorExtensions(): Extensions {
       },
     }),
     Image.configure({
-      allowBase64: true,
+      // 图片统一走 /api/assets 上传后的 URL，禁止 Base64 写入草稿 HTML。
+      allowBase64: false,
       inline: false,
       // 角点拖拽可自由改宽高；按住 Shift 可临时锁定宽高比
       resize: {

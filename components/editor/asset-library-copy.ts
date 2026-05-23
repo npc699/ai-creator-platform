@@ -29,6 +29,7 @@ export const assetLibraryCopy = {
   previewGenerating: "正在生成中，请稍候…",
   previewAlt: "AI 生成图片预览",
   saveToLibrary: "存入素材库",
+  savingToLibrary: "正在存入…",
 
   myAssetsTitle: "我的素材",
   myAssetsEmpty: "暂无素材，上传或 AI 生图后会显示在这里",

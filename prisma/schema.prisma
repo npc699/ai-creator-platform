@@ -24,6 +24,11 @@ enum Role {
   ADMIN
 }
 
+enum AssetSource {
+  UPLOAD
+  AI
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String?  @unique
@@ -35,8 +40,24 @@ model User {
   posts        Post[]
   drafts       Draft[]
   prompts      Prompt[]
+  assets       Asset[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Asset {
+  id        String      @id @default(cuid())
+  name      String
+  url       String
+  mimeType  String?
+  sizeBytes Int?
+  source    AssetSource
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId])
 }
 
 model Prompt {

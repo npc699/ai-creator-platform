@@ -1,4 +1,4 @@
-/** 本地上传插入编辑器：格式与大小限制（TipTap 已开启 allowBase64）。 */
+/** 本地上传图片：格式与大小限制（实际上传走 /api/assets，编辑器仅存 URL）。 */
 export const LOCAL_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
 export const LOCAL_IMAGE_ACCEPT =

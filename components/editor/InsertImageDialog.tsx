@@ -13,9 +13,8 @@ import {
   formatLocalImageSize,
   LOCAL_IMAGE_ACCEPT,
   LOCAL_IMAGE_MAX_BYTES,
-  readLocalImageAsDataUrl,
-  validateLocalImageFile,
 } from "@/lib/editor/local-image";
+import { uploadEditorImage } from "@/lib/editor/upload-image";
 import { cn } from "@/lib/utils";
 import { btnPrimary, btnPrimaryDisabled } from "@/lib/utils/brand";
 import type { AiImageSize } from "@/lib/ai/image-schema";
@@ -35,7 +34,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
   const [imageSize, setImageSize] = useState<AiImageSize>("2K");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [isReadingLocal, setIsReadingLocal] = useState(false);
+  const [isUploadingLocal, setIsUploadingLocal] = useState(false);
 
   const isEditorReady = Boolean(editor);
   const showPromptPlaceholder = aiPrompt.length === 0;
@@ -47,7 +46,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
   };
 
   const handlePickLocalImage = () => {
-    if (!isEditorReady || isReadingLocal) {
+    if (!isEditorReady || isUploadingLocal) {
       return;
     }
 
@@ -63,30 +62,24 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
       return;
     }
 
-    const validationError = validateLocalImageFile(file);
-    if (validationError) {
-      setLocalError(validationError);
-      return;
-    }
-
-    setIsReadingLocal(true);
+    setIsUploadingLocal(true);
     setLocalError(null);
 
     try {
-      const dataUrl = await readLocalImageAsDataUrl(file);
+      const uploaded = await uploadEditorImage(file);
 
-      if (!insertImage(dataUrl, file.name)) {
+      if (!insertImage(uploaded.url, file.name)) {
         setLocalError(assetLibraryCopy.uploadEditorNotReady);
         return;
       }
 
       handleClose();
-    } catch (readError) {
+    } catch (uploadError) {
       setLocalError(
-        readError instanceof Error ? readError.message : assetLibraryCopy.uploadReadFail
+        uploadError instanceof Error ? uploadError.message : assetLibraryCopy.uploadReadFail
       );
     } finally {
-      setIsReadingLocal(false);
+      setIsUploadingLocal(false);
     }
   };
 
@@ -214,15 +207,15 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
             <button
               className={cn(
                 "flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 bg-[#fdfcf8] px-4 py-8 text-sm transition hover:border-zinc-400 hover:bg-zinc-50",
-                (!isEditorReady || isReadingLocal) && "cursor-not-allowed opacity-60"
+                (!isEditorReady || isUploadingLocal) && "cursor-not-allowed opacity-60"
               )}
-              disabled={!isEditorReady || isReadingLocal}
+              disabled={!isEditorReady || isUploadingLocal}
               onClick={handlePickLocalImage}
               type="button"
             >
               <Upload className="h-6 w-6 text-zinc-400" />
               <span className="font-medium text-zinc-800">
-                {isReadingLocal ? assetLibraryCopy.uploadReading : insertImageCopy.pickLocal}
+                {isUploadingLocal ? assetLibraryCopy.uploadReading : insertImageCopy.pickLocal}
               </span>
               <span className="text-xs text-zinc-500">
                 {insertImageCopy.formatHint(maxFileSizeLabel)}

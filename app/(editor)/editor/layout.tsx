@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import {
   Bot,
@@ -9,15 +9,133 @@ import {
   Library,
   Save,
   Sparkles,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
 import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
 import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
 import { AssetLibraryPanel } from "@/components/editor/AssetLibraryPanel";
-import { EditorProvider } from "@/components/editor/editor-context";
+import {
+  EditorProvider,
+  useEditorContext,
+} from "@/components/editor/editor-context";
 import { cn } from "@/lib/utils";
 import { btnPrimary, btnSoftActive } from "@/lib/utils/brand";
+
+// 主动保存：与 30s 自动保存共用同一套 runSave，避免双写逻辑分叉。
+function EditorManualSaveButton() {
+  const { saveDraft, saveStatus, showNoticeBanner, isUploadingImage } = useEditorContext();
+  const isSaving = saveStatus === "saving";
+  const isBusy = isSaving || isUploadingImage;
+
+  const handleSave = useCallback(async () => {
+    const result = await saveDraft();
+    if (!result.ok) {
+      return;
+    }
+    showNoticeBanner(result.skipped ? "内容已是最新" : "保存成功");
+  }, [saveDraft, showNoticeBanner]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        void handleSave();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [handleSave]);
+
+  return (
+    <button
+      className={cn(
+        `inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium ${btnSoftActive}`,
+        isBusy && "pointer-events-none opacity-60"
+      )}
+      disabled={isBusy}
+      onClick={() => void handleSave()}
+      type="button"
+    >
+      <Save className="h-4 w-4" />
+      {isUploadingImage ? "图片上传中…" : isSaving ? "保存中…" : "保存"}
+    </button>
+  );
+}
+
+// 顶部"已自动保存 / 保存中 / 保存失败"指示器：唯一真实数据源是 EditorContext.saveStatus。
+function EditorSaveStatusIndicator() {
+  const { saveStatus, lastSavedAt } = useEditorContext();
+
+  const dotClass =
+    saveStatus === "saving"
+      ? "bg-amber-500"
+      : saveStatus === "saved"
+        ? "bg-emerald-500"
+        : saveStatus === "error"
+          ? "bg-red-500"
+          : "bg-zinc-300";
+
+  let label = "草稿未保存";
+  if (saveStatus === "saving") {
+    label = "保存中…";
+  } else if (saveStatus === "saved") {
+    label = lastSavedAt
+      ? `已自动保存 · ${lastSavedAt.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`
+      : "已自动保存";
+  } else if (saveStatus === "error") {
+    label = "保存失败，重试中…";
+  }
+
+  return (
+    <div className="inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-zinc-500">
+      <span className={cn("h-2 w-2 rounded-full", dotClass)} />
+      {label}
+    </div>
+  );
+}
+
+// 顶部绿色提示条：恢复草稿、内容已是最新等场景共用；3 秒后或用户编辑正文后自动收起。
+function EditorNoticeBanner() {
+  const { noticeBanner, dismissNoticeBanner } = useEditorContext();
+
+  useEffect(() => {
+    if (!noticeBanner) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      dismissNoticeBanner();
+    }, 3000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [dismissNoticeBanner, noticeBanner]);
+
+  if (!noticeBanner) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-live="polite"
+      className="flex shrink-0 items-center justify-between gap-3 border-b border-emerald-100 bg-emerald-50/70 px-5 py-2 text-sm text-emerald-700"
+    >
+      <span>{noticeBanner}</span>
+      <button
+        aria-label="关闭提示"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-emerald-600 transition hover:bg-emerald-100"
+        onClick={dismissNoticeBanner}
+        type="button"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
 
 type EditorLayoutProps = {
   children: ReactNode;
@@ -56,16 +174,13 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
           </Link>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6 lg:justify-end">
-          <div className="inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-medium text-zinc-500">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            已自动保存
-          </div>
+        <div className="flex flex-wrap items-center gap-3 lg:justify-end lg:gap-4">
+          <EditorSaveStatusIndicator />
+          <EditorManualSaveButton />
           <button
             className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium hover:bg-brand-surface hover:ring-2 hover:ring-brand-border ${btnSoftActive}`}
             type="button"
           >
-            <Save className="h-4 w-4" />
             预览
           </button>
           <button
@@ -77,6 +192,7 @@ export default function EditorLayout({ children }: EditorLayoutProps) {
           </button>
         </div>
         </header>
+        <EditorNoticeBanner />
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-zinc-50/60 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#fdfcf8] lg:min-h-0">

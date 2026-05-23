@@ -6,5 +6,5 @@ export const insertImageCopy = {
   tabAi: "AI 生成",
   pickLocal: "点击选择本机图片",
   formatHint: (maxSize: string) => `JPG / PNG / WebP / GIF，单张不超过 ${maxSize}`,
-  embedTip: "图片将以嵌入方式插入正文，较大文件会增加文档体积。",
+  embedTip: "图片将上传至服务器并以链接形式插入正文。",
 } as const;

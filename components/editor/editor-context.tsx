@@ -13,6 +13,11 @@ import {
 import type { Editor as TipTapEditor } from "@tiptap/react";
 
 import { AiGeneratedMark } from "@/components/editor/extensions/ai-generated-mark";
+import {
+  useDraftAutosave,
+  type AutosaveStatus,
+  type SaveDraftResult,
+} from "@/components/editor/use-draft-autosave";
 import type { AiGenerateMode } from "@/lib/ai/schema";
 
 type StartAiGenerationInput = {
@@ -48,6 +53,20 @@ type EditorContextValue = {
   isGenerating: boolean;
   generationError: string | null;
   pendingAiRange: AiPendingRange | null;
+  // Part 3 草稿状态：UI 顶部状态条与恢复横幅都从这里读取。
+  title: string;
+  setTitle: (value: string) => void;
+  draftId: string | null;
+  hydratedContent: string | null;
+  saveStatus: AutosaveStatus;
+  lastSavedAt: Date | null;
+  /** 顶部绿色提示条文案；为 null 时不展示。 */
+  noticeBanner: string | null;
+  showNoticeBanner: (message: string) => void;
+  dismissNoticeBanner: () => void;
+  saveDraft: () => Promise<SaveDraftResult>;
+  isUploadingImage: boolean;
+  setImageUploading: (uploading: boolean) => void;
   registerEditor: (editor: TipTapEditor | null) => void;
   startGenerate: (input: StartAiGenerationInput) => Promise<boolean>;
   stopGenerate: () => void;
@@ -289,9 +308,64 @@ export function EditorProvider({ children }: EditorProviderProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const selectionSnapshotRef = useRef<SelectionSnapshot | null>(null);
 
+  // 草稿相关状态：title 是 UI 受控字段，content 不进 state，避免高频输入触发整树重渲染。
+  const [title, setTitle] = useState("");
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [hydratedContent, setHydratedContent] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [noticeBanner, setNoticeBanner] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isAutosaveReady, setIsAutosaveReady] = useState(false);
+  const editorRef = useRef<TipTapEditor | null>(null);
+
   const registerEditor = useCallback((nextEditor: TipTapEditor | null) => {
+    editorRef.current = nextEditor;
     setEditor(nextEditor);
   }, []);
+
+  // getContent 给自动保存 hook 用：直接从 editor 拉 HTML，无需把正文提升为 state。
+  const getContent = useCallback(() => {
+    return editorRef.current?.getHTML() ?? "";
+  }, []);
+
+  const showNoticeBanner = useCallback((message: string) => {
+    setNoticeBanner(message);
+  }, []);
+
+  const dismissNoticeBanner = useCallback(() => {
+    setNoticeBanner(null);
+  }, []);
+
+  const setImageUploading = useCallback((uploading: boolean) => {
+    setIsUploadingImage(uploading);
+  }, []);
+
+  const handleDraftCreated = useCallback(
+    (draft: { id: string; updatedAt: string }) => {
+      setDraftId(draft.id);
+    },
+    []
+  );
+
+  const handleStatusChange = useCallback(
+    (status: AutosaveStatus, savedAt: Date | null) => {
+      setSaveStatus(status);
+      if (savedAt) {
+        setLastSavedAt(savedAt);
+      }
+    },
+    []
+  );
+
+  const { seedSavedSnapshot, saveDraft } = useDraftAutosave({
+    title,
+    getContent,
+    draftId,
+    isReady: isAutosaveReady,
+    onCreated: handleDraftCreated,
+    onStatus: handleStatusChange,
+  });
 
   const stopGenerate = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -368,6 +442,87 @@ export function EditorProvider({ children }: EditorProviderProps) {
     },
     [editor]
   );
+
+  // 进入编辑器时拉取最近一条草稿。autosave hook 在 isReady=false 时不会触发保存，
+  // 保证恢复完成前不会用空数据覆盖云端记录。
+  useEffect(() => {
+    const controller = new AbortController();
+
+    void fetch("/api/drafts/latest", {
+      signal: controller.signal,
+      credentials: "same-origin",
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        const data = (await response.json()) as {
+          draft:
+            | {
+                id: string;
+                title: string;
+                content: string;
+                updatedAt: string;
+              }
+            | null;
+        };
+        return data.draft;
+      })
+      .then((draft) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        if (draft) {
+          setTitle(draft.title);
+          setDraftId(draft.id);
+          setHydratedContent(draft.content);
+          setNoticeBanner("已恢复上次草稿，可继续编辑");
+          setLastSavedAt(new Date(draft.updatedAt));
+          setSaveStatus("saved");
+          // baseline 与服务器最新内容一致，避免恢复后立刻被识别为 dirty 再次 PUT。
+          seedSavedSnapshot(draft.title, draft.content);
+        }
+      })
+      .catch(() => {
+        // 静默失败：未登录或网络异常时，编辑器仍可正常使用，下个 tick 由 autosave 自己尝试。
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsAutosaveReady(true);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [seedSavedSnapshot]);
+
+  // 把恢复出来的正文推入 TipTap：依赖只有 [editor, hydratedContent]，正常编辑流不会触发；
+  // 编辑器实例切换（热更新等）时会重新对齐，避免 ref dedupe 引发的状态错位。
+  useEffect(() => {
+    if (!editor || !hydratedContent) {
+      return;
+    }
+    if (editor.getHTML() === hydratedContent) {
+      return;
+    }
+    // emitUpdate:false 避免触发 onUpdate 重新标记 dirty 并产生回环保存。
+    editor.commands.setContent(hydratedContent, { emitUpdate: false });
+  }, [editor, hydratedContent]);
+
+  // 用户开始编辑正文后自动收起顶部提示条，避免长时间遮挡视线。
+  useEffect(() => {
+    if (!editor || !noticeBanner) {
+      return;
+    }
+
+    const dismiss = () => setNoticeBanner(null);
+    editor.on("update", dismiss);
+    return () => {
+      editor.off("update", dismiss);
+    };
+  }, [editor, noticeBanner]);
 
   useEffect(() => {
     if (!editor) {
@@ -508,6 +663,18 @@ export function EditorProvider({ children }: EditorProviderProps) {
       isGenerating,
       generationError,
       pendingAiRange,
+      title,
+      setTitle,
+      draftId,
+      hydratedContent,
+      saveStatus,
+      lastSavedAt,
+      noticeBanner,
+      showNoticeBanner,
+      dismissNoticeBanner,
+      saveDraft,
+      isUploadingImage,
+      setImageUploading,
       registerEditor,
       startGenerate,
       stopGenerate,
@@ -517,16 +684,27 @@ export function EditorProvider({ children }: EditorProviderProps) {
     }),
     [
       acceptAiContent,
+      dismissNoticeBanner,
+      draftId,
       editor,
       generationError,
+      noticeBanner,
+      showNoticeBanner,
+      hydratedContent,
       insertImage,
       isGenerating,
+      isUploadingImage,
+      setImageUploading,
+      lastSavedAt,
       pendingAiRange,
       registerEditor,
       rejectAiContent,
+      saveDraft,
+      saveStatus,
       selectedText,
       startGenerate,
       stopGenerate,
+      title,
     ]
   );
 
