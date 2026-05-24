@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { saveUploadedImage } from "@/lib/assets/storage";
+import { saveRemoteImage, saveUploadedImage } from "@/lib/assets/storage";
 import { validateImageUploadFile } from "@/lib/assets/validate-image-file";
 import { serializeAsset } from "@/lib/assets/serialize";
 import { getCurrentUser } from "@/lib/auth";
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   const contentType = request.headers.get("content-type") ?? "";
 
-  // AI 外链登记：只写数据库，不落盘。
+  // AI 生图：先下载临时外链到本站 uploads，避免 24h 签名过期后无法访问。
   if (contentType.includes("application/json")) {
     let body: unknown;
     try {
@@ -53,11 +53,26 @@ export async function POST(request: Request) {
       );
     }
 
+    let saved;
+    try {
+      saved = await saveRemoteImage({
+        userId: user.id,
+        remoteUrl: parsed.data.url,
+        originalName: parsed.data.name,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "保存 AI 图片失败";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+
     const asset = await prisma.asset.create({
       data: {
         userId: user.id,
         name: parsed.data.name,
-        url: parsed.data.url,
+        url: saved.url,
+        mimeType: saved.mimeType,
+        sizeBytes: saved.sizeBytes,
         source: "AI",
       },
     });

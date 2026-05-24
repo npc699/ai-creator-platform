@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildDraftListWhere } from "@/lib/drafts/query";
+import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import { draftCreateSchema } from "@/lib/validations/draft";
 
 export const runtime = "nodejs";
@@ -54,6 +55,11 @@ export async function POST(request: Request) {
   }
 
   const { title, content, promptId } = parsed.data;
+
+  const promptError = await assertOwnedPromptId(user.id, promptId);
+  if (promptError) {
+    return promptError;
+  }
 
   const draft = await prisma.draft.create({
     data: {

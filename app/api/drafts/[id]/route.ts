@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import { draftUpdateSchema } from "@/lib/validations/draft";
 
 export const runtime = "nodejs";
@@ -91,6 +92,11 @@ export async function PUT(
   }
 
   const { title, content, promptId } = parsed.data;
+
+  const promptError = await assertOwnedPromptId(result.user.id, promptId);
+  if (promptError) {
+    return promptError;
+  }
 
   const updated = await prisma.draft.update({
     where: { id },

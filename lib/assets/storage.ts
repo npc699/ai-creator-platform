@@ -88,6 +88,40 @@ export async function saveUploadedImage(input: SaveUploadInput) {
   };
 }
 
+/** AI 生图返回的临时外链会过期，入库前先下载到本站 uploads 目录。 */
+export async function saveRemoteImage(input: {
+  userId: string;
+  remoteUrl: string;
+  originalName: string;
+}) {
+  let response: Response;
+  try {
+    response = await fetch(input.remoteUrl, {
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    throw new Error("无法下载 AI 图片，请重新生成后再保存");
+  }
+
+  if (!response.ok) {
+    throw new Error("AI 图片链接已失效，请重新生成后再保存");
+  }
+
+  const contentType = response.headers.get("content-type") ?? "image/jpeg";
+  const mimeType = contentType.split(";")[0]?.trim() || "image/jpeg";
+  if (!mimeType.startsWith("image/")) {
+    throw new Error("远程资源不是有效图片");
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return saveUploadedImage({
+    userId: input.userId,
+    buffer,
+    mimeType,
+    originalName: input.originalName,
+  });
+}
+
 export async function deleteLocalUploadFile(publicUrl: string) {
   const absolutePath = resolveUploadAbsolutePath(publicUrl);
   if (!absolutePath) {

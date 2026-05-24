@@ -15,6 +15,9 @@ type ConfirmDialogProps = {
   confirmingLabel?: string;
   errorMessage?: string | null;
   isConfirming?: boolean;
+  /** 是否允许点击遮罩关闭；删除确认应设为 false。 */
+  closeOnOverlayClick?: boolean;
+  overlayClassName?: string;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -28,13 +31,20 @@ export function ConfirmDialog({
   confirmingLabel = "处理中…",
   errorMessage,
   isConfirming = false,
+  closeOnOverlayClick = true,
+  overlayClassName,
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
+  const dismissOnOverlay = closeOnOverlayClick && !isConfirming;
+
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
+      className={cn(
+        "fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-4",
+        overlayClassName
+      )}
+      onClick={dismissOnOverlay ? onCancel : undefined}
       role="presentation"
     >
       <div

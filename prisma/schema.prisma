@@ -29,6 +29,16 @@ enum AssetSource {
   AI
 }
 
+enum PromptCategory {
+  LONG_FORM
+  SHORT_POST
+  SEEDING
+  PRODUCT_REVIEW
+  INDUSTRY
+  TITLE_GEN
+  REWRITE
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String?  @unique
@@ -41,8 +51,9 @@ model User {
   postLikes    PostLike[]
   postViews    PostView[]
   drafts       Draft[]
-  prompts      Prompt[]
-  assets       Asset[]
+  prompts         Prompt[]
+  promptFavorites PromptFavorite[]
+  assets          Asset[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -63,17 +74,39 @@ model Asset {
 }
 
 model Prompt {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  drafts    Draft[]
-  posts     Post[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String           @id @default(cuid())
+  title      String
+  content    String
+  category   PromptCategory   @default(LONG_FORM)
+  isOfficial Boolean          @default(false)
+  isFavorite Boolean          @default(false)
+  usageCount Int              @default(0)
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drafts     Draft[]
+  posts      Post[]
+  favorites  PromptFavorite[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 
   @@index([userId])
+  @@index([userId, category])
+  @@index([userId, isFavorite])
+  @@index([isOfficial])
+  @@index([isOfficial, category])
+}
+
+model PromptFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, promptId])
+  @@index([userId])
+  @@index([promptId])
 }
 
 model Draft {

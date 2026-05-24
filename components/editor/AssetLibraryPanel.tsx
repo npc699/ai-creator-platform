@@ -785,9 +785,6 @@ export function AssetLibraryPanel() {
                 );
               })}
             </div>
-            <p className="mt-3 text-center text-xs leading-5 text-zinc-400">
-              {assetLibraryCopy.myAssetsHoverTip}
-            </p>
           </>
         )}
       </AssetLibraryAccordion>

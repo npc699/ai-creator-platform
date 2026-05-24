@@ -334,10 +334,14 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
                     </button>
                     <button
                       aria-busy={isDeleting}
-                      aria-label={`删除草稿：${draft.title || "无标题草稿"}`}
+                      aria-label={
+                        isDeleting
+                          ? "删除中"
+                          : `删除草稿：${draft.title || "无标题草稿"}`
+                      }
                       className={cn(
                         btnEditorHeaderGhostDanger,
-                        "my-2 mr-2 shrink-0 self-center px-2.5"
+                        "my-2 mr-2 h-9 w-9 shrink-0 self-center justify-center px-0"
                       )}
                       disabled={isDeleting}
                       onClick={() => {
@@ -347,7 +351,6 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
                       type="button"
                     >
                       <Trash2 className="h-4 w-4" />
-                      {isDeleting ? "删除中…" : "删除"}
                     </button>
                   </li>
                 );
@@ -379,6 +382,7 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
 
       {pendingDeleteDraft ? (
         <ConfirmDialog
+          closeOnOverlayClick={false}
           confirmLabel="确定"
           confirmingLabel="删除中…"
           description={`删除后将无法恢复，草稿「${pendingDeleteDraft.title || "无标题草稿"}」将被永久删除。`}

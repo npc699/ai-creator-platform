@@ -19,7 +19,6 @@ export const assetLibraryCopy = {
 
   aiTitle: "AI 生图",
   promptLabel: "图片描述",
-  promptHint: "Enter 生成，Shift+Enter 换行",
   promptPlaceholder:
     "例：16:9 横图，宫崎骏动画风格，一只田园猫在草地上奔跑...",
   stopGenerate: "停止生成",
@@ -33,9 +32,9 @@ export const assetLibraryCopy = {
 
   myAssetsTitle: "我的素材",
   myAssetsEmpty: "暂无素材，上传或 AI 生图后会显示在这里",
-  myAssetsHoverTip: "悬停可进行插入、重命名或删除",
   insertToEditor: "插入",
   renameAsset: "重命名",
   deleteAsset: "删除",
+  viewAsset: "查看大图",
   renamePlaceholder: "文件名",
 } as const;

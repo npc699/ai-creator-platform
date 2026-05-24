@@ -4,6 +4,12 @@ import {
   parseFeedChannel,
   parseFeedSort,
 } from "@/lib/feed/params";
+import type { PromptScope, PromptSort } from "@/lib/prompts/query";
+import {
+  PROMPT_CATEGORY_LABELS,
+  PROMPT_CATEGORY_SLUGS,
+  normalizePromptCategorySlug,
+} from "@/lib/prompts/category";
 
 export const PUBLISHED_FILTERS = [
   "all",
@@ -49,7 +55,7 @@ export function buildPublishedQuery(options: {
   return query ? `/published?${query}` : "/published";
 }
 
-export const PROMPT_CATEGORIES = ["all", "writing", "ops", "script"] as const;
+export const PROMPT_CATEGORIES = ["all", ...PROMPT_CATEGORY_SLUGS] as const;
 export type PromptCategory = (typeof PROMPT_CATEGORIES)[number];
 
 export const PROMPT_CATEGORY_OPTIONS: {
@@ -57,55 +63,59 @@ export const PROMPT_CATEGORY_OPTIONS: {
   label: string;
 }[] = [
   { category: "all", label: "全部" },
-  { category: "writing", label: "写作" },
-  { category: "ops", label: "运营" },
-  { category: "script", label: "脚本" },
-];
-
-export const ASSET_FILTERS = ["all", "image", "file"] as const;
-export type AssetFilter = (typeof ASSET_FILTERS)[number];
-
-export const ASSET_FILTER_OPTIONS: { filter: AssetFilter; label: string }[] = [
-  { filter: "all", label: "全部" },
-  { filter: "image", label: "图片" },
-  { filter: "file", label: "文件" },
+  ...PROMPT_CATEGORY_SLUGS.map((slug) => ({
+    category: slug,
+    label: PROMPT_CATEGORY_LABELS[slug],
+  })),
 ];
 
 export function parsePromptCategory(value: string | null): PromptCategory {
-  if (value === "writing" || value === "ops" || value === "script") {
-    return value;
+  if (value === "all") {
+    return "all";
   }
-  return "all";
+
+  const normalized = normalizePromptCategorySlug(value);
+  return normalized ?? "all";
 }
 
-export function parseAssetFilter(value: string | null): AssetFilter {
-  if (value === "image" || value === "file") {
-    return value;
-  }
-  return "all";
-}
 
 export function buildPromptsQuery(options: {
+  scope?: PromptScope;
   category?: PromptCategory;
+  sort?: PromptSort;
 }): string {
   const params = new URLSearchParams();
+  const scope = options.scope ?? "official";
   const category = options.category ?? "all";
+  const sort = options.sort ?? "updated";
+
+  if (scope !== "official") {
+    params.set("scope", scope);
+  }
   if (category !== "all") {
     params.set("category", category);
   }
+  if (sort !== "updated") {
+    params.set("sort", sort);
+  }
+
   const query = params.toString();
   return query ? `/prompts?${query}` : "/prompts";
 }
 
-export function buildAssetsQuery(options: { filter?: AssetFilter }): string {
-  const params = new URLSearchParams();
-  const filter = options.filter ?? "all";
-  if (filter !== "all") {
-    params.set("filter", filter);
-  }
-  const query = params.toString();
-  return query ? `/assets?${query}` : "/assets";
-}
+export {
+  PROMPT_SCOPES,
+  PROMPT_SCOPE_OPTIONS,
+  PROMPT_SORTS,
+  PROMPT_SORT_OPTIONS,
+  parsePromptScope,
+  parsePromptSort,
+  sortPrompts,
+  getPromptEmptyMessage,
+  type PromptScope,
+  type PromptSort,
+} from "@/lib/prompts/query";
+
 
 /** 供 FeedSortNav 组装首页排序链接。 */
 export function buildFeedSortOptions(

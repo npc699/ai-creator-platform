@@ -16,8 +16,8 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is not set");
 }
 
-/** Post 增加 viewCount / likeCount 后更新此 key，强制重建客户端 */
-const PRISMA_CLIENT_CACHE_KEY = "post-metrics-v2";
+/** Prompt 增加 isOfficial / PromptFavorite 后更新此 key，强制重建客户端 */
+const PRISMA_CLIENT_CACHE_KEY = "prompt-official-v1";
 
 const adapter = new PrismaPg(databaseUrl);
 
@@ -36,8 +36,12 @@ function isPrismaClientCacheValid(client: PrismaClient | undefined): client is P
     return false;
   }
 
-  // schema 新增模型后若仍复用旧实例，会出现 prisma.asset 为 undefined
-  return typeof client.asset?.create === "function";
+  // schema 新增模型/字段后若仍复用旧实例，会出现 delegate 缺失或 where 字段校验失败
+  return (
+    typeof client.asset?.create === "function" &&
+    typeof client.prompt?.findMany === "function" &&
+    typeof client.promptFavorite?.upsert === "function"
+  );
 }
 
 const cachedPrisma = globalForPrisma.prisma;

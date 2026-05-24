@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";
+import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import { postPublishSchema } from "@/lib/validations/post";
 import { PostStatus } from "@/lib/generated/prisma/client";
 
@@ -79,6 +80,11 @@ export async function POST(request: Request) {
   }
 
   const { title, content, draftId, promptId } = parsed.data;
+
+  const promptError = await assertOwnedPromptId(user.id, promptId);
+  if (promptError) {
+    return promptError;
+  }
 
   try {
     const post = await prisma.$transaction(async (tx) => {

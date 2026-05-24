@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PostStatus } from "@/lib/generated/prisma/client";
+import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import {
   postStatusPatchSchema,
   postUpdateSchema,
@@ -92,6 +93,11 @@ export async function PUT(
   }
 
   const { title, content, promptId } = parsed.data;
+
+  const promptError = await assertOwnedPromptId(result.user.id, promptId);
+  if (promptError) {
+    return promptError;
+  }
 
   const updated = await prisma.post.update({
     where: { id },

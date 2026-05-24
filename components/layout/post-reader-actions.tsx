@@ -155,6 +155,7 @@ export function PostReaderActions({ postId, status }: PostReaderActionsProps) {
 
       {showDeleteConfirm ? (
         <ConfirmDialog
+          closeOnOverlayClick={false}
           confirmLabel="确定"
           confirmingLabel="删除中…"
           description="删除后将无法恢复，文章将被永久删除。"

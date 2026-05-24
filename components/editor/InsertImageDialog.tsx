@@ -229,10 +229,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
         ) : (
           <div className="mt-4 space-y-3">
             <label className="block text-xs font-medium text-zinc-500">
-              <span className="flex items-center justify-between gap-2">
-                <span>{assetLibraryCopy.promptLabel}</span>
-                <span className="font-normal text-zinc-400">{assetLibraryCopy.promptHint}</span>
-              </span>
+              {assetLibraryCopy.promptLabel}
               <div className="relative mt-2">
                 {showPromptPlaceholder ? (
                   <span

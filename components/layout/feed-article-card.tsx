@@ -2,7 +2,7 @@
 
 import { Eye, Heart, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { formatFeedMetric } from "@/lib/feed/format-metric";
 import { formatFeedScoreLabel } from "@/lib/feed/format-score";
@@ -39,18 +39,23 @@ export function FeedArticleCard({
   onDelete,
   showMetrics = true,
 }: FeedArticleCardProps) {
-  const [liked, setLiked] = useState(initialLiked);
-  const [likeCount, setLikeCount] = useState(likes);
+  const sourceKey = `${postId ?? ""}:${initialLiked}:${likes}`;
+  const [syncedKey, setSyncedKey] = useState(sourceKey);
+  const [optimisticLike, setOptimisticLike] = useState<{
+    liked: boolean;
+    likeCount: number;
+  } | null>(null);
   const [isLikePending, setIsLikePending] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setLiked(initialLiked);
-  }, [initialLiked]);
+  // 父级数据刷新时重置乐观状态，避免 effect 内 setState。
+  if (!isLikePending && sourceKey !== syncedKey) {
+    setSyncedKey(sourceKey);
+    setOptimisticLike(null);
+  }
 
-  useEffect(() => {
-    setLikeCount(likes);
-  }, [likes]);
+  const liked = optimisticLike?.liked ?? initialLiked;
+  const likeCount = optimisticLike?.likeCount ?? likes;
 
   const titleClassName =
     "mt-4 max-w-[75%] truncate text-lg font-semibold leading-7 text-zinc-900";
@@ -63,8 +68,11 @@ export function FeedArticleCard({
     setLikeError(null);
 
     if (!postId) {
-      setLiked((previous) => !previous);
-      setLikeCount((previous) => (liked ? previous - 1 : previous + 1));
+      const nextLiked = !liked;
+      setOptimisticLike({
+        liked: nextLiked,
+        likeCount: nextLiked ? likeCount + 1 : likeCount - 1,
+      });
       return;
     }
 
@@ -74,8 +82,8 @@ export function FeedArticleCard({
     }
 
     const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikeCount((previous) => (nextLiked ? previous + 1 : previous - 1));
+    const optimisticCount = nextLiked ? likeCount + 1 : likeCount - 1;
+    setOptimisticLike({ liked: nextLiked, likeCount: optimisticCount });
     setIsLikePending(true);
 
     try {
@@ -88,8 +96,7 @@ export function FeedArticleCard({
         const payload = (await response.json().catch(() => null)) as {
           error?: string;
         } | null;
-        setLiked(!nextLiked);
-        setLikeCount((previous) => (nextLiked ? previous - 1 : previous + 1));
+        setOptimisticLike({ liked: !nextLiked, likeCount: likeCount });
         setLikeError(payload?.error ?? "点赞失败，请稍后重试");
         return;
       }
@@ -98,11 +105,9 @@ export function FeedArticleCard({
         liked: boolean;
         likeCount: number;
       };
-      setLiked(data.liked);
-      setLikeCount(data.likeCount);
+      setOptimisticLike({ liked: data.liked, likeCount: data.likeCount });
     } catch {
-      setLiked(!nextLiked);
-      setLikeCount((previous) => (nextLiked ? previous - 1 : previous + 1));
+      setOptimisticLike({ liked: !nextLiked, likeCount: likeCount });
       setLikeError("点赞失败，请稍后重试");
     } finally {
       setIsLikePending(false);
@@ -127,10 +132,10 @@ export function FeedArticleCard({
       {onDelete ? (
         <button
           aria-busy={isDeleting}
-          aria-label="删除草稿"
+          aria-label={isDeleting ? "删除中" : "删除草稿"}
           className={cn(
-            "pointer-events-auto absolute right-4 top-4 z-10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5",
-            "text-sm font-medium text-red-700 transition",
+            "pointer-events-auto absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-lg",
+            "text-red-700 transition",
             "hover:bg-red-50 hover:text-red-800",
             "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
           )}
@@ -143,8 +148,19 @@ export function FeedArticleCard({
           type="button"
         >
           <Trash2 className="h-4 w-4" />
-          {isDeleting ? "删除中…" : "删除"}
         </button>
+      ) : null}
+
+      {publishStatus ? (
+        <span
+          aria-label={publishStatus === "online" ? "已上线" : "已下线"}
+          className={cn(
+            "pointer-events-none absolute right-4 top-4 z-10 h-2.5 w-2.5 rounded-full ring-2 ring-white",
+            publishStatus === "online" ? "bg-emerald-500" : "bg-amber-400"
+          )}
+          role="img"
+          title={publishStatus === "online" ? "已上线" : "已下线"}
+        />
       ) : null}
 
       <div className="relative z-[1] pointer-events-none">
@@ -176,18 +192,6 @@ export function FeedArticleCard({
           )}
         >
           <div className="flex flex-wrap items-center gap-2">
-            {publishStatus ? (
-              <span
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
-                  publishStatus === "online"
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                    : "bg-amber-50 text-amber-800 ring-amber-200"
-                )}
-              >
-                {publishStatus === "online" ? "已上线" : "已下线"}
-              </span>
-            ) : null}
             <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
               {formatFeedScoreLabel(score)}
             </span>

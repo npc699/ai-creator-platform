@@ -91,6 +91,7 @@ export function DraftArticleList({ items, userId }: DraftArticleListProps) {
 
       {pendingDelete ? (
         <ConfirmDialog
+          closeOnOverlayClick={false}
           confirmLabel="确定"
           confirmingLabel="删除中…"
           description={`删除后将无法恢复，草稿「${pendingDelete.title || "无标题草稿"}」将被永久删除。`}

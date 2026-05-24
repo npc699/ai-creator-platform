@@ -26,7 +26,13 @@ const quickActions: QuickAction[] = [
   },
 ];
 
-export function AiAssistantPanel() {
+export function AiAssistantPanel({
+  keyword,
+  onKeywordChange,
+}: {
+  keyword: string;
+  onKeywordChange: (value: string) => void;
+}) {
   const {
     editor,
     generationError,
@@ -35,7 +41,6 @@ export function AiAssistantPanel() {
     startGenerate,
     stopGenerate,
   } = useEditorContext();
-  const [keyword, setKeyword] = useState("");
   const [insertMode, setInsertMode] = useState<"replace" | "append">("replace");
 
   const isEditorReady = Boolean(editor);
@@ -57,7 +62,7 @@ export function AiAssistantPanel() {
       : await startGenerate({ mode: "generate", keyword });
 
     if (succeeded) {
-      setKeyword("");
+      onKeywordChange("");
     }
   };
 
@@ -95,10 +100,7 @@ export function AiAssistantPanel() {
         </div>
 
         <label className="block text-xs font-medium text-zinc-500">
-          <span className="flex items-center justify-between gap-2">
-            <span>写作指令</span>
-            <span className="font-normal text-zinc-400">Enter 发送，Shift+Enter 换行</span>
-          </span>
+          写作指令
           <div className="relative mt-2">
             {showInstructionPlaceholder ? (
               <span
@@ -113,7 +115,7 @@ export function AiAssistantPanel() {
             <textarea
               className="min-h-32 w-full resize-none rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm leading-6 text-zinc-800 outline-none transition focus:border-brand-border focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-60"
               disabled={isGenerating}
-              onChange={(event) => setKeyword(event.target.value)}
+              onChange={(event) => onKeywordChange(event.target.value)}
               onKeyDown={handleKeywordKeyDown}
               value={keyword}
             />

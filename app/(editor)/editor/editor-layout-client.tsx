@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Bot,
   ChevronLeft,
-  Eye,
   ExternalLink,
   FileEdit,
   ImageIcon,
@@ -20,12 +19,14 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
 import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
 import { AssetLibraryPanel } from "@/components/editor/AssetLibraryPanel";
+import { PromptLibraryPanel } from "@/components/editor/PromptLibraryPanel";
 import { EditorDraftPanel } from "@/components/editor/editor-draft-panel";
 import {
   EditorProvider,
   useEditorContext,
 } from "@/components/editor/editor-context";
 import { clearLocalDraft } from "@/lib/draft-idb";
+import { fetchEditorPrompt } from "@/lib/editor/prompts-api";
 import { getEditorBackTarget, EDITOR_FROM_PARAM } from "@/lib/editor/back-navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -301,8 +302,6 @@ const assistantTabs = [
   { label: "素材库", icon: ImageIcon },
 ] as const;
 
-const promptTemplates = ["产品测评文章", "小红书种草文", "行业趋势分析"];
-
 type AssistantTab = (typeof assistantTabs)[number]["label"];
 
 type EditorLayoutClientProps = {
@@ -315,11 +314,42 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
   const searchParams = useSearchParams();
   const postId = typeof params?.id === "string" ? params.id : null;
   const initialDraftId = searchParams.get("draftId");
+  const promptIdParam = searchParams.get("promptId");
+  const [instructionKeyword, setInstructionKeyword] = useState("");
   const [activeAssistantTab, setActiveAssistantTab] =
     useState<AssistantTab>("AI 生成");
   const activeAssistantTabIndex = assistantTabs.findIndex(
     (tab) => tab.label === activeAssistantTab
   );
+
+  useEffect(() => {
+    if (!promptIdParam) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const prompt = await fetchEditorPrompt(promptIdParam);
+        if (!cancelled) {
+          setInstructionKeyword(prompt.content);
+          setActiveAssistantTab("AI 生成");
+        }
+      } catch {
+        // promptId 无效时不阻断编辑器
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [promptIdParam]);
+
+  const applyPrompt = useCallback((content: string) => {
+    setInstructionKeyword(content);
+    setActiveAssistantTab("AI 生成");
+  }, []);
 
   return (
     <EditorProvider
@@ -337,10 +367,6 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
           <div className="flex flex-wrap items-center gap-3 lg:justify-end lg:gap-4">
             <EditorSaveStatusIndicator />
             <EditorManualSaveButton />
-            <button className={btnEditorHeaderGhost} type="button">
-              <Eye className="h-4 w-4" />
-              预览
-            </button>
             <EditorPublishButton />
           </div>
         </header>
@@ -394,26 +420,16 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
                 activeKey={activeAssistantTab}
                 renderPanel={(tab) => {
                   if (tab === "AI 生成") {
-                    return <AiAssistantPanel />;
+                    return (
+                      <AiAssistantPanel
+                        keyword={instructionKeyword}
+                        onKeywordChange={setInstructionKeyword}
+                      />
+                    );
                   }
 
                   if (tab === "Prompt 库") {
-                    return (
-                      <section className="space-y-3">
-                        <h2 className="text-sm font-medium text-zinc-500">
-                          常用 Prompt 模板
-                        </h2>
-                        {promptTemplates.map((template) => (
-                          <button
-                            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
-                            key={template}
-                            type="button"
-                          >
-                            {template}
-                          </button>
-                        ))}
-                      </section>
-                    );
+                    return <PromptLibraryPanel onApplyPrompt={applyPrompt} />;
                   }
 
                   return <AssetLibraryPanel />;
