@@ -6,6 +6,8 @@ import { PrismaClient } from "../generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
+  /** schema 结构变更后递增，避免 dev 热更新沿用旧 PrismaClient */
+  prismaCacheKey?: string;
 };
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -13,6 +15,9 @@ const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is not set");
 }
+
+/** Post 增加 viewCount / likeCount 后更新此 key，强制重建客户端 */
+const PRISMA_CLIENT_CACHE_KEY = "post-metrics-v2";
 
 const adapter = new PrismaPg(databaseUrl);
 
@@ -22,16 +27,26 @@ function createPrismaClient() {
   });
 }
 
-// 开发环境会频繁热更新，复用全局客户端可以避免重复建立数据库连接。
-// schema 新增模型后若仍复用旧实例，会出现 prisma.asset 为 undefined；此处检测并重建。
-const cachedPrisma = globalForPrisma.prisma;
-const hasAssetDelegate =
-  cachedPrisma &&
-  typeof (cachedPrisma as { asset?: { create?: unknown } }).asset?.create ===
-    "function";
+function isPrismaClientCacheValid(client: PrismaClient | undefined): client is PrismaClient {
+  if (!client) {
+    return false;
+  }
 
-export const prisma = hasAssetDelegate ? cachedPrisma : createPrismaClient();
+  if (globalForPrisma.prismaCacheKey !== PRISMA_CLIENT_CACHE_KEY) {
+    return false;
+  }
+
+  // schema 新增模型后若仍复用旧实例，会出现 prisma.asset 为 undefined
+  return typeof client.asset?.create === "function";
+}
+
+const cachedPrisma = globalForPrisma.prisma;
+
+export const prisma = isPrismaClientCacheValid(cachedPrisma)
+  ? cachedPrisma
+  : createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+  globalForPrisma.prismaCacheKey = PRISMA_CLIENT_CACHE_KEY;
 }

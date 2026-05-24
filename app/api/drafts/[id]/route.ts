@@ -23,11 +23,16 @@ async function loadOwnedDraft(id: string) {
       content: true,
       updatedAt: true,
       promptId: true,
+      post: { select: { id: true } },
     },
   });
 
   if (!draft) {
     return { error: NextResponse.json({ error: "草稿不存在" }, { status: 404 }) } as const;
+  }
+
+  if (draft.post) {
+    return { error: NextResponse.json({ error: "该草稿已发布" }, { status: 404 }) } as const;
   }
 
   if (draft.userId !== user.id) {
@@ -101,4 +106,19 @@ export async function PUT(
   });
 
   return NextResponse.json({ draft: updated });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  context: RouteContext<"/api/drafts/[id]">
+) {
+  const { id } = await context.params;
+  const result = await loadOwnedDraft(id);
+  if ("error" in result) {
+    return result.error;
+  }
+
+  await prisma.draft.delete({ where: { id } });
+
+  return NextResponse.json({ ok: true });
 }

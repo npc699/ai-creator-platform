@@ -18,10 +18,11 @@ import {
   type AutosaveStatus,
   type SaveDraftResult,
 } from "@/components/editor/use-draft-autosave";
+import { usePostAutosave } from "@/components/editor/use-post-autosave";
 import { useNetworkStatus } from "@/components/editor/use-network-status";
-import { getLocalDraft, putLocalDraft } from "@/lib/draft-idb";
+import { getLocalDraft, putLocalDraft, clearLocalDraft } from "@/lib/draft-idb";
 import {
-  pickDraftOnLoad,
+  pickDraftOnLoadForId,
   type CloudDraftSnapshot,
 } from "@/lib/draft-sync";
 import type { AiGenerateMode } from "@/lib/ai/schema";
@@ -53,12 +54,18 @@ type AiPendingRange = {
   restoreOnReject?: string;
 };
 
+type EditorMode = "draft" | "post";
+
 type EditorContextValue = {
   editor: TipTapEditor | null;
+  editorMode: EditorMode;
+  postId: string | null;
   selectedText: string;
   isGenerating: boolean;
   generationError: string | null;
   pendingAiRange: AiPendingRange | null;
+  /** 当前登录用户，用于发布后清理本地草稿。 */
+  userId: string;
   // Part 3 草稿状态：UI 顶部状态条与恢复横幅都从这里读取。
   title: string;
   setTitle: (value: string) => void;
@@ -72,6 +79,8 @@ type EditorContextValue = {
   showNoticeBanner: (message: string) => void;
   dismissNoticeBanner: () => void;
   saveDraft: () => Promise<SaveDraftResult>;
+  isDirty: () => boolean;
+  getEditorContent: () => string;
   isUploadingImage: boolean;
   setImageUploading: (uploading: boolean) => void;
   registerEditor: (editor: TipTapEditor | null) => void;
@@ -86,6 +95,9 @@ const EditorContext = createContext<EditorContextValue | null>(null);
 
 type EditorProviderProps = {
   userId: string;
+  postId?: string | null;
+  /** 从草稿箱等入口指定要打开的草稿 ID */
+  initialDraftId?: string | null;
   children: ReactNode;
 };
 
@@ -307,7 +319,13 @@ async function parseErrorResponse(response: Response) {
   }
 }
 
-export function EditorProvider({ userId, children }: EditorProviderProps) {
+export function EditorProvider({
+  userId,
+  postId = null,
+  initialDraftId = null,
+  children,
+}: EditorProviderProps) {
+  const isPostMode = Boolean(postId);
   const [editor, setEditor] = useState<TipTapEditor | null>(null);
   const [selectedText, setSelectedText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -368,17 +386,43 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
     []
   );
 
-  const { seedSavedSnapshot, saveDraft, syncPendingDraft, scheduleLocalPersist } =
-    useDraftAutosave({
-      userId,
+  const {
+    seedSavedSnapshot: seedDraftSnapshot,
+    saveDraft: saveDraftToCloud,
+    syncPendingDraft,
+    scheduleLocalPersist,
+    isDirty: isDraftDirty,
+  } = useDraftAutosave({
+    userId,
+    title,
+    getContent,
+    draftId,
+    isOnline,
+    isReady: isAutosaveReady,
+    enabled: !isPostMode,
+    onCreated: handleDraftCreated,
+    onStatus: handleStatusChange,
+  });
+
+  const { seedSavedSnapshot: seedPostSnapshot, saveDraft: savePostToCloud } =
+    usePostAutosave({
+      postId: postId ?? "",
       title,
       getContent,
-      draftId,
       isOnline,
       isReady: isAutosaveReady,
-      onCreated: handleDraftCreated,
+      enabled: isPostMode,
       onStatus: handleStatusChange,
     });
+
+  const saveDraft = isPostMode ? savePostToCloud : saveDraftToCloud;
+
+  const isDirty = useCallback(() => {
+    if (isPostMode) {
+      return false;
+    }
+    return isDraftDirty();
+  }, [isDraftDirty, isPostMode]);
 
   const stopGenerate = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -456,78 +500,166 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
     [editor]
   );
 
-  // 进入编辑器时并行拉云端与 IndexedDB，按时间戳合并后再允许自动保存。
+  // 进入编辑器：文章模式拉取 Post；草稿模式按 draftId 打开指定稿或新建空白稿。
   useEffect(() => {
     const controller = new AbortController();
 
     void (async () => {
-      const online = typeof navigator !== "undefined" && navigator.onLine;
+      setIsAutosaveReady(false);
 
-      const [cloudDraft, localDraft] = await Promise.all([
-        fetch("/api/drafts/latest", {
-          signal: controller.signal,
-          credentials: "same-origin",
-        })
-          .then(async (response) => {
-            if (!response.ok) {
-              return null;
-            }
+      // 切换草稿/新建时先清空正文，避免加载完成前仍显示上一份内容。
+      if (!postId && editorRef.current) {
+        editorRef.current.commands.setContent("", { emitUpdate: false });
+      }
+
+      try {
+        if (postId) {
+          const response = await fetch(`/api/posts/${postId}`, {
+            signal: controller.signal,
+            credentials: "same-origin",
+          });
+
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          if (response.ok) {
             const data = (await response.json()) as {
-              draft: CloudDraftSnapshot | null;
+              post: {
+                title: string;
+                content: string;
+                updatedAt: string;
+              };
             };
-            return data.draft;
-          })
-          .catch(() => null),
-        getLocalDraft(userId),
-      ]);
 
-      if (controller.signal.aborted) {
-        return;
-      }
+            setTitle(data.post.title);
+            setHydratedContent(data.post.content);
+            setNoticeBanner("已加载文章，修改后将自动保存");
+            setSaveStatus("saved");
+            setLastSavedAt(new Date(data.post.updatedAt));
+            seedPostSnapshot(data.post.title, data.post.content);
+          } else {
+            setNoticeBanner("加载文章失败，请稍后重试");
+            setSaveStatus("error");
+          }
 
-      const pick = pickDraftOnLoad(userId, cloudDraft, localDraft, {
-        isOnline: online,
-      });
-
-      if (pick.localRecordToPersist) {
-        await putLocalDraft(pick.localRecordToPersist);
-      }
-
-      shouldSyncAfterLoadRef.current = pick.shouldSyncAfterLoad;
-
-      if (pick.draft) {
-        setTitle(pick.draft.title);
-        if (pick.draft.id) {
-          setDraftId(pick.draft.id);
+          return;
         }
-        setHydratedContent(pick.draft.content);
 
-        if (pick.source === "local") {
-          setNoticeBanner("已恢复本地草稿，可继续编辑");
+        const online = typeof navigator !== "undefined" && navigator.onLine;
+
+        // 草稿箱等入口通过 query 指定草稿时，优先拉取该条记录。
+        const requestedDraft = initialDraftId
+          ? await fetch(`/api/drafts/${initialDraftId}`, {
+              signal: controller.signal,
+              credentials: "same-origin",
+            })
+              .then(async (response) => {
+                if (!response.ok) {
+                  return null;
+                }
+                const data = (await response.json()) as {
+                  draft: CloudDraftSnapshot | null;
+                };
+                return data.draft;
+              })
+              .catch((error) => {
+                if (isAbortError(error) || controller.signal.aborted) {
+                  return null;
+                }
+                return null;
+              })
+          : null;
+
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        if (requestedDraft) {
+          const localDraft = await getLocalDraft(userId);
+          const pick = pickDraftOnLoadForId(
+            userId,
+            requestedDraft,
+            localDraft,
+            { isOnline: online }
+          );
+
+          if (pick.localRecordToPersist) {
+            await putLocalDraft(pick.localRecordToPersist);
+          }
+
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          shouldSyncAfterLoadRef.current = pick.shouldSyncAfterLoad;
+
+          const loaded = pick.draft ?? {
+            id: requestedDraft.id,
+            title: requestedDraft.title,
+            content: requestedDraft.content,
+            updatedAt: requestedDraft.updatedAt,
+          };
+
+          setTitle(loaded.title);
+          setDraftId(loaded.id);
+          setHydratedContent(loaded.content);
+          setNoticeBanner(
+            pick.source === "local"
+              ? "已恢复本地草稿，可继续编辑"
+              : "已加载草稿，可继续编辑"
+          );
           setSaveStatus("saved");
-        } else {
-          setNoticeBanner("已恢复上次草稿，可继续编辑");
-          setSaveStatus("saved");
+          if (loaded.updatedAt) {
+            setLastSavedAt(new Date(loaded.updatedAt));
+          }
+          seedDraftSnapshot(loaded.title, loaded.content);
+          return;
         }
 
-        if (pick.draft.updatedAt) {
-          setLastSavedAt(new Date(pick.draft.updatedAt));
+        if (initialDraftId) {
+          setNoticeBanner("草稿不存在或已发布");
+          setTitle("");
+          setDraftId(null);
+          setHydratedContent("");
+          seedDraftSnapshot("", "");
+          return;
         }
 
-        seedSavedSnapshot(pick.draft.title, pick.draft.content);
+        // 无 draftId：新建空白稿，不恢复 latest / IDB pending。
+        await clearLocalDraft(userId);
+        setTitle("");
+        setDraftId(null);
+        setHydratedContent("");
+        seedDraftSnapshot("", "");
+        setSaveStatus("idle");
+        setLastSavedAt(null);
+        setNoticeBanner(null);
+      } catch (error) {
+        // Strict Mode 卸载或路由切换时会 abort 进行中的 hydrate，属正常流程。
+        if (isAbortError(error) || controller.signal.aborted) {
+          return;
+        }
+
+        if (postId) {
+          setNoticeBanner("加载文章失败，请稍后重试");
+          setSaveStatus("error");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsAutosaveReady(true);
+        }
       }
-
-      setIsAutosaveReady(true);
     })();
 
     return () => {
       controller.abort();
     };
-  }, [seedSavedSnapshot, userId]);
+  }, [initialDraftId, postId, seedDraftSnapshot, seedPostSnapshot, userId]);
 
-  // hydrate 完成后若本地较新且在线，立即尝试同步 pending。
+  // hydrate 完成后若本地较新且在线，立即尝试同步 pending（仅草稿模式）。
   useEffect(() => {
-    if (!isAutosaveReady || !isOnline) {
+    if (isPostMode || !isAutosaveReady || !isOnline) {
       return;
     }
 
@@ -535,12 +667,12 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
       shouldSyncAfterLoadRef.current = false;
       void syncPendingDraft();
     }
-  }, [isAutosaveReady, isOnline, syncPendingDraft]);
+  }, [isAutosaveReady, isOnline, isPostMode, syncPendingDraft]);
 
-  // 从离线恢复联网时自动上传本地 pending 草稿。
+  // 从离线恢复联网时自动上传本地 pending 草稿（仅草稿模式）。
   const prevOnlineRef = useRef(isOnline);
   useEffect(() => {
-    if (!isAutosaveReady) {
+    if (isPostMode || !isAutosaveReady) {
       prevOnlineRef.current = isOnline;
       return;
     }
@@ -550,11 +682,11 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
     }
 
     prevOnlineRef.current = isOnline;
-  }, [isAutosaveReady, isOnline, syncPendingDraft]);
+  }, [isAutosaveReady, isOnline, isPostMode, syncPendingDraft]);
 
-  // 正文变更时 debounce 写入 IndexedDB，避免断网刷新丢失未触发 30s tick 的修改。
+  // 正文变更时 debounce 写入 IndexedDB（仅草稿模式）。
   useEffect(() => {
-    if (!editor || !isAutosaveReady) {
+    if (isPostMode || !editor || !isAutosaveReady) {
       return;
     }
 
@@ -566,12 +698,12 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
     return () => {
       editor.off("update", handleUpdate);
     };
-  }, [editor, isAutosaveReady, scheduleLocalPersist]);
+  }, [editor, isAutosaveReady, isPostMode, scheduleLocalPersist]);
 
   // 把恢复出来的正文推入 TipTap：依赖只有 [editor, hydratedContent]，正常编辑流不会触发；
   // 编辑器实例切换（热更新等）时会重新对齐，避免 ref dedupe 引发的状态错位。
   useEffect(() => {
-    if (!editor || !hydratedContent) {
+    if (!editor || hydratedContent === null) {
       return;
     }
     if (editor.getHTML() === hydratedContent) {
@@ -729,10 +861,13 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
   const value = useMemo<EditorContextValue>(
     () => ({
       editor,
+      editorMode: isPostMode ? "post" : "draft",
+      postId,
       selectedText,
       isGenerating,
       generationError,
       pendingAiRange,
+      userId,
       title,
       setTitle,
       draftId,
@@ -744,6 +879,8 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
       showNoticeBanner,
       dismissNoticeBanner,
       saveDraft,
+      isDirty,
+      getEditorContent: getContent,
       isUploadingImage,
       setImageUploading,
       registerEditor,
@@ -759,10 +896,14 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
       draftId,
       editor,
       generationError,
+      getContent,
+      isPostMode,
+      postId,
       noticeBanner,
       showNoticeBanner,
       hydratedContent,
       insertImage,
+      isDirty,
       isGenerating,
       isUploadingImage,
       setImageUploading,
@@ -777,6 +918,7 @@ export function EditorProvider({ userId, children }: EditorProviderProps) {
       startGenerate,
       stopGenerate,
       title,
+      userId,
     ]
   );
 

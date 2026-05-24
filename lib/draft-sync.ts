@@ -166,6 +166,18 @@ export function pickDraftOnLoad(
   };
 }
 
+/** 打开指定草稿时合并 IDB：仅当 local.draftId 与目标稿一致才参与冲突合并。 */
+export function pickDraftOnLoadForId(
+  userId: string,
+  cloud: CloudDraftSnapshot,
+  local: LocalDraftRecord | null,
+  options?: { isOnline?: boolean }
+): PickDraftOnLoadResult {
+  const scopedLocal =
+    local && local.draftId === cloud.id ? local : null;
+  return pickDraftOnLoad(userId, cloud, scopedLocal, options);
+}
+
 /** 区分网络失败与业务错误，避免 401 被误标为离线。 */
 export function isNetworkError(error: unknown) {
   if (typeof navigator !== "undefined" && !navigator.onLine) {

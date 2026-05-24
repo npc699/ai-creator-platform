@@ -52,11 +52,41 @@ export const textSoftMuted = "text-brand-muted";
 /** 软边框（搜索框、通知钮等） */
 export const borderBrandSoft = "border-brand-border";
 
-/** 主操作实心按钮（顶栏发布、存入素材库等） */
+/** 主 CTA（HomeSidebar 开始创作等）：蓝底白字 + hover 加深 */
+export const btnCreateAction = [
+  "inline-flex items-center justify-center gap-2 rounded-xl",
+  "bg-blue-400 px-4 py-3 text-sm font-semibold text-white!",
+  "transition hover:bg-blue-500 hover:text-white!",
+].join(" ");
+
+/** 编辑器顶栏文字按钮（返回、保存、预览等）：灰字 + 悬停灰底；链接需 ! 覆盖全局 a { color: inherit } */
+export const btnEditorHeaderGhost = [
+  "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-xl px-3",
+  "text-sm font-medium text-zinc-600! transition",
+  "hover:bg-zinc-100 hover:text-zinc-950!",
+].join(" ");
+
+export const btnEditorHeaderGhostDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-zinc-600!";
+
+/** 危险操作文字按钮（删除等）：常态红字，悬停淡红底 */
+export const btnEditorHeaderGhostDanger = [
+  "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-xl px-3",
+  "text-sm font-medium text-red-700! transition",
+  "hover:bg-red-50 hover:text-red-800!",
+].join(" ");
+
+export const btnEditorHeaderGhostDangerDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-red-700!";
+
+export const btnCreateActionDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-blue-400";
+
+/** 主操作实心按钮（存入素材库等）；链接需 ! 覆盖全局 a { color: inherit } */
 export const btnPrimary = [
   "inline-flex items-center justify-center rounded-xl",
-  "bg-blue-400 text-sm font-medium text-white shadow-sm",
-  "transition-colors hover:bg-blue-500",
+  "bg-blue-400 text-sm font-medium text-white! shadow-sm",
+  "transition-colors hover:bg-blue-500 hover:text-white!",
 ].join(" ");
 
 /** 主操作按钮禁用态：保持底色，避免 hover 变色 */

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { unpublishedDraftWhere } from "@/lib/drafts/query";
 
 export const runtime = "nodejs";
 
@@ -13,7 +14,7 @@ export async function GET() {
   }
 
   const draft = await prisma.draft.findFirst({
-    where: { userId: user.id },
+    where: { userId: user.id, ...unpublishedDraftWhere },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,

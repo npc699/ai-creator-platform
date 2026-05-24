@@ -30,12 +30,14 @@ type UseDraftAutosaveParams = {
   isOnline: boolean;
   // 草稿恢复尚未完成前严禁触发保存，避免覆盖云端真实数据。
   isReady: boolean;
+  /** 文章编辑模式下关闭草稿自动保存，避免双写。 */
+  enabled?: boolean;
   onCreated: (draft: DraftPayload) => void;
   onStatus: (status: AutosaveStatus, savedAt: Date | null) => void;
 };
 
 export type SaveDraftResult =
-  | { ok: true; skipped?: boolean }
+  | { ok: true; skipped?: boolean; draftId?: string | null }
   | {
       ok: false;
       reason: "not_ready" | "empty" | "saving" | "error" | "offline";
@@ -56,6 +58,8 @@ export type UseDraftAutosaveResult = {
   syncPendingDraft: () => Promise<void>;
   /** 编辑时 debounce 触发本地写入。 */
   scheduleLocalPersist: () => void;
+  /** 相对上次成功落库是否有未保存修改。 */
+  isDirty: () => boolean;
 };
 
 function stripHtmlText(html: string) {
@@ -92,6 +96,7 @@ export function useDraftAutosave({
   draftId,
   isOnline,
   isReady,
+  enabled = true,
   onCreated,
   onStatus,
 }: UseDraftAutosaveParams): UseDraftAutosaveResult {
@@ -101,6 +106,7 @@ export function useDraftAutosave({
   const draftIdRef = useRef<string | null>(draftId);
   const isOnlineRef = useRef(isOnline);
   const isReadyRef = useRef(isReady);
+  const enabledRef = useRef(enabled);
   const isSavingRef = useRef(false);
   const isSyncingRef = useRef(false);
   // baseline = 最近一次成功落库的内容；null 表示尚未保存过。
@@ -118,6 +124,7 @@ export function useDraftAutosave({
     draftIdRef.current = draftId;
     isOnlineRef.current = isOnline;
     isReadyRef.current = isReady;
+    enabledRef.current = enabled;
     onCreatedRef.current = onCreated;
     onStatusRef.current = onStatus;
   });
@@ -166,7 +173,7 @@ export function useDraftAutosave({
   );
 
   const scheduleLocalPersist = useCallback(() => {
-    if (!isReadyRef.current) {
+    if (!isReadyRef.current || !enabledRef.current) {
       return;
     }
 
@@ -218,6 +225,10 @@ export function useDraftAutosave({
 
   const runSave = useCallback(
     async (options?: RunSaveOptions): Promise<SaveDraftResult> => {
+      if (!enabledRef.current) {
+        return { ok: false, reason: "not_ready", message: "当前不在草稿编辑模式" };
+      }
+
       if (!isReadyRef.current) {
         return { ok: false, reason: "not_ready", message: "草稿加载中，请稍候" };
       }
@@ -237,7 +248,7 @@ export function useDraftAutosave({
         lastSavedTitleRef.current === nextTitle &&
         lastSavedContentRef.current === nextContent;
       if (isClean && !options?.skipCleanCheck) {
-        return { ok: true, skipped: true };
+        return { ok: true, skipped: true, draftId: draftIdRef.current };
       }
 
       isSavingRef.current = true;
@@ -279,7 +290,7 @@ export function useDraftAutosave({
         });
 
         onStatusRef.current("saved", new Date(saved.updatedAt));
-        return { ok: true };
+        return { ok: true, draftId: draftIdRef.current };
       } catch (error) {
         if (controller.signal.aborted) {
           return { ok: false, reason: "saving", message: "保存已取消" };
@@ -317,6 +328,10 @@ export function useDraftAutosave({
   );
 
   const syncPendingDraft = useCallback(async () => {
+    if (!enabledRef.current) {
+      return;
+    }
+
     if (!isReadyRef.current || isSyncingRef.current || isSavingRef.current) {
       return;
     }
@@ -402,11 +417,36 @@ export function useDraftAutosave({
     [runSave]
   );
 
-  useEffect(() => {
-    scheduleLocalPersist();
-  }, [title, scheduleLocalPersist]);
+  const isDirty = useCallback(() => {
+    const nextTitle = titleRef.current;
+    const nextContent = getContentRef.current();
+    const hasContent = stripHtmlText(nextContent).length > 0;
+
+    if (
+      lastSavedTitleRef.current === null &&
+      lastSavedContentRef.current === null
+    ) {
+      return hasContent || nextTitle.trim().length > 0;
+    }
+
+    return (
+      lastSavedTitleRef.current !== nextTitle ||
+      lastSavedContentRef.current !== nextContent
+    );
+  }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    scheduleLocalPersist();
+  }, [enabled, title, scheduleLocalPersist]);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
       void runSave();
     }, AUTOSAVE_INTERVAL_MS);
@@ -414,9 +454,13 @@ export function useDraftAutosave({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [runSave]);
+  }, [enabled, runSave]);
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const handleVisibility = () => {
       if (document.visibilityState === "hidden") {
         void runSave();
@@ -426,7 +470,7 @@ export function useDraftAutosave({
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [runSave]);
+  }, [enabled, runSave]);
 
   useEffect(() => {
     return () => {
@@ -437,5 +481,5 @@ export function useDraftAutosave({
     };
   }, []);
 
-  return { seedSavedSnapshot, saveDraft, syncPendingDraft, scheduleLocalPersist };
+  return { seedSavedSnapshot, saveDraft, syncPendingDraft, scheduleLocalPersist, isDirty };
 }

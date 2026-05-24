@@ -5,23 +5,176 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Bot,
   ChevronLeft,
+  Eye,
+  ExternalLink,
+  FileEdit,
   ImageIcon,
   Library,
   Save,
-  Sparkles,
+  Send,
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
 import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
 import { AssetLibraryPanel } from "@/components/editor/AssetLibraryPanel";
+import { EditorDraftPanel } from "@/components/editor/editor-draft-panel";
 import {
   EditorProvider,
   useEditorContext,
 } from "@/components/editor/editor-context";
+import { clearLocalDraft } from "@/lib/draft-idb";
+import { getEditorBackTarget, EDITOR_FROM_PARAM } from "@/lib/editor/back-navigation";
 import { cn } from "@/lib/utils";
-import { btnPrimary, btnSoftActive } from "@/lib/utils/brand";
+import {
+  btnEditorHeaderGhost,
+  btnEditorHeaderGhostDisabled,
+} from "@/lib/utils/brand";
+
+function EditorBackLink({
+  draftId,
+  postId,
+}: {
+  draftId: string | null;
+  postId: string | null;
+}) {
+  const searchParams = useSearchParams();
+  const from = searchParams.get(EDITOR_FROM_PARAM);
+  const { href, label } = getEditorBackTarget({ postId, draftId, from });
+
+  return (
+    <Link className={btnEditorHeaderGhost} href={href}>
+      <ChevronLeft className="h-4 w-4" />
+      {label}
+    </Link>
+  );
+}
+
+function EditorDraftPanelTrigger() {
+  const { editorMode } = useEditorContext();
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (editorMode === "post") {
+    return null;
+  }
+
+  return (
+    <>
+      <button
+        className={btnEditorHeaderGhost}
+        onClick={() => setIsOpen(true)}
+        type="button"
+      >
+        <FileEdit className="h-4 w-4" />
+        草稿箱
+      </button>
+      {isOpen ? <EditorDraftPanel onClose={() => setIsOpen(false)} /> : null}
+    </>
+  );
+}
+
+function EditorPublishButton() {
+  const {
+    editorMode,
+    postId,
+    title,
+    draftId,
+    userId,
+    saveDraft,
+    getEditorContent,
+    showNoticeBanner,
+    saveStatus,
+    isUploadingImage,
+  } = useEditorContext();
+  const router = useRouter();
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  const isSaving = saveStatus === "saving";
+  const isBusy = isPublishing || isSaving || isUploadingImage;
+
+  const handlePublish = useCallback(async () => {
+    const trimmedTitle = title.trim();
+    const content = getEditorContent();
+    const plainText = content.replace(/<[^>]*>/g, "").trim();
+
+    if (!trimmedTitle) {
+      showNoticeBanner("请先输入标题再发布");
+      return;
+    }
+
+    if (!plainText) {
+      showNoticeBanner("请先输入正文再发布");
+      return;
+    }
+
+    setIsPublishing(true);
+
+    try {
+      const saveResult = await saveDraft();
+      const publishDraftId =
+        (saveResult.ok ? saveResult.draftId : null) ?? draftId;
+
+      const response = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: trimmedTitle,
+          content,
+          draftId: publishDraftId,
+        }),
+        credentials: "same-origin",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        showNoticeBanner(payload?.error ?? "发布失败，请稍后重试");
+        return;
+      }
+
+      const data = (await response.json()) as { post: { id: string } };
+      await clearLocalDraft(userId);
+      showNoticeBanner("发布成功");
+      router.push(`/posts/${data.post.id}`);
+    } catch {
+      showNoticeBanner("发布失败，请稍后重试");
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [
+    draftId,
+    userId,
+    getEditorContent,
+    router,
+    saveDraft,
+    showNoticeBanner,
+    title,
+  ]);
+
+  if (editorMode === "post" && postId) {
+    return (
+      <Link className={btnEditorHeaderGhost} href={`/posts/${postId}`}>
+        <ExternalLink className="h-4 w-4" />
+        查看文章
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      className={cn(btnEditorHeaderGhost, btnEditorHeaderGhostDisabled)}
+      disabled={isBusy}
+      onClick={() => void handlePublish()}
+      type="button"
+    >
+      <Send className="h-4 w-4" />
+      {isPublishing ? "发布中…" : "发布文章"}
+    </button>
+  );
+}
 
 function EditorManualSaveButton() {
   const { saveDraft, saveStatus, showNoticeBanner, isUploadingImage } =
@@ -53,10 +206,7 @@ function EditorManualSaveButton() {
 
   return (
     <button
-      className={cn(
-        `inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium ${btnSoftActive}`,
-        isBusy && "pointer-events-none opacity-60"
-      )}
+      className={cn(btnEditorHeaderGhost, btnEditorHeaderGhostDisabled)}
       disabled={isBusy}
       onClick={() => void handleSave()}
       type="button"
@@ -68,7 +218,7 @@ function EditorManualSaveButton() {
 }
 
 function EditorSaveStatusIndicator() {
-  const { saveStatus, lastSavedAt, isOnline } = useEditorContext();
+  const { saveStatus, lastSavedAt, isOnline, editorMode } = useEditorContext();
 
   const effectiveStatus =
     !isOnline && saveStatus !== "saving" ? "offline" : saveStatus;
@@ -84,7 +234,7 @@ function EditorSaveStatusIndicator() {
             ? "bg-red-500"
             : "bg-zinc-300";
 
-  let label = "草稿未保存";
+  let label = editorMode === "post" ? "文章未保存" : "草稿未保存";
   if (effectiveStatus === "saving") {
     label = "保存中…";
   } else if (effectiveStatus === "offline") {
@@ -161,6 +311,10 @@ type EditorLayoutClientProps = {
 };
 
 export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps) {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const postId = typeof params?.id === "string" ? params.id : null;
+  const initialDraftId = searchParams.get("draftId");
   const [activeAssistantTab, setActiveAssistantTab] =
     useState<AssistantTab>("AI 生成");
   const activeAssistantTabIndex = assistantTabs.findIndex(
@@ -168,32 +322,26 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
   );
 
   return (
-    <EditorProvider userId={userId}>
+    <EditorProvider
+      initialDraftId={initialDraftId}
+      postId={postId}
+      userId={userId}
+    >
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
         <header className="flex shrink-0 flex-col gap-5 border-b border-zinc-200/80 bg-white p-3 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 flex-1 items-center gap-4">
-            <Link
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-xl px-3 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
-              href="/"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              返回
-            </Link>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <EditorBackLink draftId={initialDraftId} postId={postId} />
+            <EditorDraftPanelTrigger />
           </div>
 
           <div className="flex flex-wrap items-center gap-3 lg:justify-end lg:gap-4">
             <EditorSaveStatusIndicator />
             <EditorManualSaveButton />
-            <button
-              className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium hover:bg-brand-surface hover:ring-2 hover:ring-brand-border ${btnSoftActive}`}
-              type="button"
-            >
+            <button className={btnEditorHeaderGhost} type="button">
+              <Eye className="h-4 w-4" />
               预览
             </button>
-            <button className={`h-9 gap-2 px-4 ${btnPrimary}`} type="button">
-              <Sparkles className="h-4 w-4" />
-              发布
-            </button>
+            <EditorPublishButton />
           </div>
         </header>
         <EditorNoticeBanner />

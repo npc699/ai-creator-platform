@@ -27,6 +27,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   min-height: 100%;
@@ -88,6 +92,8 @@ a {
     margin: 0;
     font-size: 1.0625rem;
     line-height: 1.8;
+    /* 空段落（无文字或仅 <br>）在浏览器中高度为 0，需保底一行行高 */
+    min-height: 1.8em;
   }
 
   /* AI 流式生成待确认内容：浅蓝底 + 左侧强调线，接收后移除该样式。 */
@@ -385,6 +391,17 @@ a {
     float: left;
     height: 0;
     pointer-events: none;
+  }
+
+  /* 详情页等只读场景：隐藏编辑态图片手柄与表格选区装饰 */
+  .tiptap-editor.tiptap-readonly [data-resize-handle],
+  .tiptap-editor.tiptap-readonly .column-resize-handle,
+  .tiptap-editor.tiptap-readonly .selectedCell::after {
+    display: none;
+  }
+
+  .tiptap-editor.tiptap-readonly [data-resize-container] {
+    cursor: default;
   }
 }
 

@@ -1,6 +1,6 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
 
+import { StartCreateLink } from "@/components/layout/start-create-link";
 import { buildHomeQuery } from "@/lib/feed/params";
 import { cn } from "@/lib/utils";
 
@@ -65,13 +65,7 @@ export function HomeSidebar({
     <aside className="hidden w-72 shrink-0 xl:block">
       <div className="sticky top-20 z-10 space-y-4 px-4 pb-4">
         <section className="rounded-2xl border border-zinc-200/80 bg-white p-4 shadow-sm">
-          <Link
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-400 px-4 py-3 text-sm font-semibold text-white! transition hover:bg-blue-500 hover:text-white!"
-            href="/editor"
-          >
-            <Plus className="h-4 w-4 text-white" strokeWidth={2.5} />
-            <span className="text-white">开始创作</span>
-          </Link>
+          <StartCreateLink />
 
           <div className="mt-4 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl bg-zinc-100 px-2 py-3">

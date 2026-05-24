@@ -1,11 +1,10 @@
 import { HomeFeed } from "@/components/layout/home-feed";
-import { HomeSidebar } from "@/components/layout/home-sidebar";
+import { FeedPageLayout } from "@/components/layout/feed-page-layout";
 
 export default function HomePage() {
   return (
-    <div className="flex items-stretch">
+    <FeedPageLayout>
       <HomeFeed />
-      <HomeSidebar />
-    </div>
+    </FeedPageLayout>
   );
 }
