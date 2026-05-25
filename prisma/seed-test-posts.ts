@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PostStatus, PrismaClient } from "../lib/generated/prisma/client";
+import { PostStatus, PrismaClient, ReviewRiskLevel, ReviewStatus } from "../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -48,6 +48,28 @@ function publishedAtFromDaysAgo(daysAgo: number) {
   date.setDate(date.getDate() - daysAgo);
   date.setHours(10 + (daysAgo % 8), 30, 0, 0);
   return date;
+}
+
+/**
+ * 为测试文章生成稳定的模拟质量分（52–92），与互动量正相关，便于验证推荐排序。
+ * 接入 AI 审核前若曾手工写死分数，重跑 seed 会丢失；此处统一在种子数据里恢复。
+ */
+function deriveTestQualityScore(post: SeedPost) {
+  const engagement = post.likeCount * 3 + post.viewCount;
+  const normalized =
+    Math.log10(engagement + 1) / Math.log10(200_000);
+  const score = 52 + normalized * 40;
+  return Math.round(Math.min(92, Math.max(52, score)));
+}
+
+function buildTestReviewFields(post: SeedPost) {
+  const publishedAt = publishedAtFromDaysAgo(post.daysAgo);
+  return {
+    qualityScore: deriveTestQualityScore(post),
+    reviewStatus: ReviewStatus.PASSED,
+    reviewRiskLevel: ReviewRiskLevel.NONE,
+    reviewedAt: publishedAt,
+  };
 }
 
 /** 五账号各约 10 篇已发布文章（合计约 50 篇），标题固定便于重复执行时覆盖更新。 */
@@ -686,16 +708,18 @@ async function main() {
     }
 
     for (const post of account.posts) {
+      const publishedAt = publishedAtFromDaysAgo(post.daysAgo);
       await prisma.post.create({
         data: {
           userId: user.id,
           title: post.title,
           content: toHtml(post.paragraphs),
           status: PostStatus.PUBLISHED,
-          publishedAt: publishedAtFromDaysAgo(post.daysAgo),
+          publishedAt,
           viewCount: post.viewCount,
           likeCount: post.likeCount,
           tags: post.tags,
+          ...buildTestReviewFields(post),
         },
       });
       created += 1;

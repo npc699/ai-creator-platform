@@ -5,8 +5,10 @@ export {
   getArkBaseConfig,
 } from "./ark-config";
 export {
+  chatArk,
   streamArkChat,
   type ArkChatMessage,
+  type ArkChatOptions,
   type ArkStreamOptions,
 } from "./ark";
 export { generateArkImage, type ArkImageOptions, type ArkImageResult } from "./ark-image";

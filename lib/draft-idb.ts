@@ -2,10 +2,13 @@
 
 import { openDB, type IDBPDatabase } from "idb";
 
-import type { LocalDraftRecord } from "@/lib/draft-sync";
+import {
+  getDraftStorageKey,
+  type LocalDraftRecord,
+} from "@/lib/draft-sync";
 
 const DB_NAME = "ai-creator-drafts";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "drafts";
 
 type DraftDb = IDBPDatabase<{
@@ -24,9 +27,15 @@ function getDraftDb() {
 
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
           db.createObjectStore(STORE_NAME, { keyPath: "userId" });
+        }
+        if (oldVersion < 2) {
+          if (db.objectStoreNames.contains(STORE_NAME)) {
+            db.deleteObjectStore(STORE_NAME);
+          }
+          db.createObjectStore(STORE_NAME, { keyPath: "storageKey" });
         }
       },
     });
@@ -35,28 +44,32 @@ function getDraftDb() {
   return dbPromise;
 }
 
-/** 读取当前用户在浏览器内的本地草稿；不存在时返回 null。 */
-export async function getLocalDraft(userId: string) {
+export { getDraftStorageKey };
+
+export async function getLocalDraft(storageKey: string) {
   try {
     const db = await getDraftDb();
-    return (await db.get(STORE_NAME, userId)) ?? null;
+    return (await db.get(STORE_NAME, storageKey)) ?? null;
   } catch {
     return null;
   }
 }
 
-/** 写入或覆盖本地草稿。多标签页采用 last-write-wins。 */
 export async function putLocalDraft(record: LocalDraftRecord) {
   const db = await getDraftDb();
   await db.put(STORE_NAME, record);
 }
 
-/** 清除本地草稿（云端已同步且无需保留 pending 时可选调用）。 */
-export async function clearLocalDraft(userId: string) {
+export async function clearLocalDraft(storageKey: string) {
   try {
     const db = await getDraftDb();
-    await db.delete(STORE_NAME, userId);
+    await db.delete(STORE_NAME, storageKey);
   } catch {
     // 清理失败不影响主流程。
   }
+}
+
+/** 发布后清理该用户的新建稿本地缓存。 */
+export async function clearNewDraftLocal(userId: string) {
+  await clearLocalDraft(getDraftStorageKey(userId, null));
 }

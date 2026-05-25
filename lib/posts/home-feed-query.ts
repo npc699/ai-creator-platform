@@ -32,6 +32,7 @@ const homePostSelect = {
   viewCount: true,
   likeCount: true,
   tags: true,
+  qualityScore: true,
   user: {
     select: {
       name: true,

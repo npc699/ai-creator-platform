@@ -48,7 +48,7 @@ export const mockHomeFeedItems: FeedArticleItem[] = [
       id: `scroll-mock-${seq}`,
       time: `${seq} 小时前`,
       title: `[滚动测试 #${seq}] ${template.title}`,
-      score: Math.min(99, template.score + (seq % 5)),
+      score: Math.min(99, (template.score ?? 85) + (seq % 5)),
       views: Math.round(seq * 1_300),
       likes: seq * 127,
     };

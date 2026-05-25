@@ -4,15 +4,24 @@ export type CloudDraftSnapshot = {
   title: string;
   content: string;
   updatedAt: string;
+  tags?: string[];
 };
+
+/** 本地草稿存储键：有 draftId 时按稿隔离，新建稿仍用 user 维度。 */
+export function getDraftStorageKey(userId: string, draftId: string | null) {
+  return draftId ? `draft:${draftId}` : `user:${userId}`;
+}
 
 /** IndexedDB 本地草稿记录。 */
 export type LocalDraftRecord = {
+  storageKey: string;
   userId: string;
   draftId: string | null;
+  /** EditDraft 关联的已发布文章 ID。 */
+  sourcePostId?: string | null;
   title: string;
   content: string;
-  /** 发布前暂存的标签，云端 Draft 无此字段时以本地为准。 */
+  /** 发布前暂存的标签。 */
   tags?: string[];
   /** 最后一次本地写入时间（ISO）。 */
   localUpdatedAt: string;
@@ -97,6 +106,7 @@ export function pickDraftOnLoad(
       },
       shouldSyncAfterLoad: false,
       localRecordToPersist: {
+        storageKey: getDraftStorageKey(userId, cloud.id),
         userId,
         draftId: cloud.id,
         title: cloud.title,
@@ -149,10 +159,12 @@ export function pickDraftOnLoad(
       },
       shouldSyncAfterLoad: false,
       localRecordToPersist: {
+        storageKey: getDraftStorageKey(local.userId, cloud.id),
         userId: local.userId,
         draftId: cloud.id,
         title: cloud.title,
         content: cloud.content,
+        tags: cloud.tags,
         localUpdatedAt: cloud.updatedAt,
         cloudUpdatedAt: cloud.updatedAt,
         pendingSync: false,

@@ -1,4 +1,3 @@
-import { DEFAULT_FEED_SCORE } from "@/lib/feed/format-score";
 import { PostStatus } from "@/lib/generated/prisma/client";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";
 import type { FeedArticleItem } from "@/lib/feed/types";
@@ -30,8 +29,8 @@ export function formatPostArticleDate(date: Date) {
   });
 }
 
-export function getPostDisplayScore() {
-  return DEFAULT_FEED_SCORE;
+export function getPostDisplayScore(score?: number | null): number | null {
+  return score != null ? Math.round(score) : null;
 }
 
 type PublishedPostRecord = {
@@ -44,6 +43,8 @@ type PublishedPostRecord = {
   viewCount: number;
   likeCount: number;
   tags: string[];
+  qualityScore?: number | null;
+  reviewStatus?: string | null;
   prompt: { title: string } | null;
 };
 
@@ -70,13 +71,14 @@ export function mapPublishedPostToFeedItem(
     time: formatPublishedTime(post.publishedAt ?? post.updatedAt),
     title: post.title,
     excerpt: buildPostExcerpt(post.content),
-    score: DEFAULT_FEED_SCORE,
+    score: getPostDisplayScore(post.qualityScore),
     tags: post.tags,
     views: post.viewCount,
     likes: post.likeCount,
     href: `/posts/${post.id}`,
     singleLineExcerpt: true,
     publishStatus: mapPostStatusToPublishStatus(post.status),
+    reviewPending: post.reviewStatus === "PENDING",
     persistMetrics: true,
   };
 }

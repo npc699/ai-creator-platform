@@ -1,4 +1,4 @@
-﻿import { ContentPanel } from "@/components/layout/content-panel";
+import { ContentPanel } from "@/components/layout/content-panel";
 import { FeedArticleList } from "@/components/layout/feed-article-list";
 import { FeedScrollRestore } from "@/components/layout/feed-scroll-restore";
 import { FeedEmptyState } from "@/components/layout/feed-empty-state";
@@ -47,6 +47,8 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
           viewCount: true,
           likeCount: true,
           tags: true,
+          qualityScore: true,
+          reviewStatus: true,
           prompt: {
             select: { title: true },
           },

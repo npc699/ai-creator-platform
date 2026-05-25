@@ -4,6 +4,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";
 import { assertOwnedPromptId } from "@/lib/prompts/ownership";
+import {
+  buildReviewRecordResult,
+  reviewContent,
+  toPrismaReviewRiskLevel,
+} from "@/lib/review";
 import { postPublishSchema } from "@/lib/validations/post";
 import { PostStatus } from "@/lib/generated/prisma/client";
 
@@ -87,18 +92,87 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (draftId) {
+      const draft = await prisma.draft.findUnique({
+        where: { id: draftId },
+        select: {
+          id: true,
+          userId: true,
+          sourcePostId: true,
+          publishedAs: { select: { id: true } },
+        },
+      });
+
+      if (!draft || draft.userId !== user.id) {
+        return NextResponse.json({ error: "无权使用该草稿发布" }, { status: 403 });
+      }
+
+      if (draft.sourcePostId) {
+        return NextResponse.json(
+          { error: "该草稿为文章编辑稿，请使用「更新发布」" },
+          { status: 400 }
+        );
+      }
+
+      if (draft.publishedAs) {
+        return NextResponse.json({ error: "该草稿已发布" }, { status: 400 });
+      }
+    }
+
+    const reviewResult = await reviewContent({
+      title,
+      content,
+      tags: tags ?? [],
+      draftId,
+      userId: user.id,
+      reviewType: "PUBLISH",
+    });
+
+    if (reviewResult.status === "REJECTED") {
+      await prisma.reviewRecord.create({
+        data: {
+          draftId: draftId ?? null,
+          userId: user.id,
+          reviewType: "PUBLISH",
+          contentHash: reviewResult.contentHash,
+          passed: reviewResult.safety.passed,
+          riskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+          categories: reviewResult.safety.categories,
+          qualityScore: reviewResult.qualityScore,
+          result: buildReviewRecordResult(reviewResult),
+        },
+      });
+
+      return NextResponse.json(
+        {
+          error: reviewResult.safety.reason,
+          reviewResult,
+        },
+        { status: 422 }
+      );
+    }
+
     const post = await prisma.$transaction(async (tx) => {
       if (draftId) {
         const draft = await tx.draft.findUnique({
           where: { id: draftId },
-          select: { id: true, userId: true, post: { select: { id: true } } },
+          select: {
+            id: true,
+            userId: true,
+            sourcePostId: true,
+            publishedAs: { select: { id: true } },
+          },
         });
 
         if (!draft || draft.userId !== user.id) {
           throw new Error("DRAFT_FORBIDDEN");
         }
 
-        if (draft.post) {
+        if (draft.sourcePostId) {
+          throw new Error("DRAFT_IS_EDIT");
+        }
+
+        if (draft.publishedAs) {
           throw new Error("DRAFT_ALREADY_PUBLISHED");
         }
       }
@@ -110,6 +184,10 @@ export async function POST(request: Request) {
           content,
           status: "PUBLISHED",
           publishedAt: new Date(),
+          qualityScore: reviewResult.qualityScore,
+          reviewStatus: reviewResult.status,
+          reviewRiskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+          reviewedAt: reviewResult.aiFailed ? null : new Date(),
           draftId: draftId ?? null,
           promptId: promptId ?? null,
           tags: tags ?? [],
@@ -119,6 +197,24 @@ export async function POST(request: Request) {
           title: true,
           updatedAt: true,
           publishedAt: true,
+          qualityScore: true,
+          reviewStatus: true,
+          reviewRiskLevel: true,
+        },
+      });
+
+      await tx.reviewRecord.create({
+        data: {
+          postId: created.id,
+          draftId: draftId ?? null,
+          userId: user.id,
+          reviewType: "PUBLISH",
+          contentHash: reviewResult.contentHash,
+          passed: reviewResult.safety.passed,
+          riskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+          categories: reviewResult.safety.categories,
+          qualityScore: reviewResult.qualityScore,
+          result: buildReviewRecordResult(reviewResult),
         },
       });
 
@@ -130,7 +226,7 @@ export async function POST(request: Request) {
       return created;
     });
 
-    return NextResponse.json({ post });
+    return NextResponse.json({ post, reviewResult });
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === "DRAFT_FORBIDDEN") {

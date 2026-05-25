@@ -38,6 +38,7 @@ export function FeedArticleCard({
   href,
   singleLineExcerpt = false,
   publishStatus,
+  reviewPending,
   postId,
   canLike = false,
   initialLiked = false,
@@ -210,7 +211,7 @@ export function FeedArticleCard({
             showMetrics && "justify-between"
           )}
         >
-          <ArticleMetaBadges score={score} tags={tags} />
+          <ArticleMetaBadges reviewPending={reviewPending} score={score} tags={tags} />
 
           {showMetrics ? (
             <div className="flex flex-col items-end gap-1">

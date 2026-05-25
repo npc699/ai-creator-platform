@@ -22,9 +22,11 @@ async function loadOwnedDraft(id: string) {
       userId: true,
       title: true,
       content: true,
+      tags: true,
       updatedAt: true,
       promptId: true,
-      post: { select: { id: true } },
+      sourcePostId: true,
+      publishedAs: { select: { id: true } },
     },
   });
 
@@ -32,12 +34,12 @@ async function loadOwnedDraft(id: string) {
     return { error: NextResponse.json({ error: "草稿不存在" }, { status: 404 }) } as const;
   }
 
-  if (draft.post) {
+  // 首发草稿已发布则不可再编辑；EditDraft（sourcePostId 有值）允许继续保存。
+  if (draft.publishedAs && !draft.sourcePostId) {
     return { error: NextResponse.json({ error: "该草稿已发布" }, { status: 404 }) } as const;
   }
 
   if (draft.userId !== user.id) {
-    // 不暴露存在性：跨账号访问视为禁止，统一返 403。
     return { error: NextResponse.json({ error: "无权访问该草稿" }, { status: 403 }) } as const;
   }
 
@@ -60,7 +62,9 @@ export async function GET(
       id: draft.id,
       title: draft.title,
       content: draft.content,
+      tags: draft.tags,
       promptId: draft.promptId,
+      sourcePostId: draft.sourcePostId,
       updatedAt: draft.updatedAt,
     },
   });
@@ -91,7 +95,7 @@ export async function PUT(
     );
   }
 
-  const { title, content, promptId } = parsed.data;
+  const { title, content, promptId, tags } = parsed.data;
 
   const promptError = await assertOwnedPromptId(result.user.id, promptId);
   if (promptError) {
@@ -104,6 +108,7 @@ export async function PUT(
       title,
       content,
       promptId: promptId ?? null,
+      ...(tags !== undefined ? { tags } : {}),
     },
     select: {
       id: true,

@@ -16,9 +16,23 @@ export type ArkStreamOptions = {
   signal?: AbortSignal;
 };
 
+export type ArkChatOptions = {
+  messages: ArkChatMessage[];
+  signal?: AbortSignal;
+  temperature?: number;
+};
+
 type ArkChatCompletionChunk = {
   choices?: Array<{
     delta?: {
+      content?: string | null;
+    };
+  }>;
+};
+
+type ArkChatCompletion = {
+  choices?: Array<{
+    message?: {
       content?: string | null;
     };
   }>;
@@ -122,4 +136,45 @@ export async function* streamArkChat({
   } finally {
     reader.releaseLock();
   }
+}
+
+export async function chatArk({
+  messages,
+  signal,
+  temperature = 0.2,
+}: ArkChatOptions) {
+  const { apiKey, baseUrl, model } = getArkChatConfig();
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: false,
+      temperature,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => "");
+    const detail = errorBody ? `：${errorBody.slice(0, 300)}` : "";
+    throw new ArkUpstreamError(
+      `火山方舟请求失败（HTTP ${response.status}）${detail}`,
+      response.status
+    );
+  }
+
+  const payload = (await response.json().catch(() => null)) as ArkChatCompletion | null;
+  const content = payload?.choices?.[0]?.message?.content;
+
+  if (typeof content !== "string" || content.trim().length === 0) {
+    throw new ArkUpstreamError("火山方舟未返回可用文本", 502);
+  }
+
+  return content;
 }

@@ -19,6 +19,27 @@ enum PostStatus {
   ARCHIVED
 }
 
+enum ReviewStatus {
+  PENDING
+  PASSED
+  REJECTED
+  FLAGGED
+}
+
+enum ReviewRiskLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum ReviewType {
+  PUBLISH
+  UPDATE
+  MANUAL
+  FIX
+}
+
 enum Role {
   USER
   ADMIN
@@ -50,6 +71,7 @@ model User {
   posts        Post[]
   postLikes    PostLike[]
   postViews    PostView[]
+  reviewRecords ReviewRecord[]
   drafts       Draft[]
   prompts         Prompt[]
   promptFavorites PromptFavorite[]
@@ -110,19 +132,25 @@ model PromptFavorite {
 }
 
 model Draft {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  userId    String
-  promptId  String?
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  prompt    Prompt?  @relation(fields: [promptId], references: [id], onDelete: SetNull)
-  post      Post?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  title        String
+  content      String
+  userId       String
+  promptId     String?
+  /** 非空表示该草稿是某篇已发布文章的编辑层，自动保存只写此处，不直接改 Post。 */
+  sourcePostId String?  @unique
+  tags         String[] @default([])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt       Prompt?  @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  publishedAs  Post?    @relation("PublishedFromDraft")
+  sourcePost   Post?    @relation("PostEditDraft", fields: [sourcePostId], references: [id], onDelete: Cascade)
+  reviewRecords ReviewRecord[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([userId])
   @@index([promptId])
+  @@index([sourcePostId])
 }
 
 model Post {
@@ -134,23 +162,56 @@ model Post {
   viewCount   Int        @default(0)
   likeCount   Int        @default(0)
   tags        String[]   @default([])
+  qualityScore Float?
+  reviewStatus ReviewStatus @default(PENDING)
+  reviewRiskLevel ReviewRiskLevel @default(NONE)
+  reviewedAt  DateTime?
   userId      String
   promptId    String?
   draftId     String?    @unique
   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt      Prompt?    @relation(fields: [promptId], references: [id], onDelete: SetNull)
-  draft       Draft?     @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  draft       Draft?     @relation("PublishedFromDraft", fields: [draftId], references: [id], onDelete: SetNull)
+  editDraft   Draft?     @relation("PostEditDraft")
   likes       PostLike[]
   views       PostView[]
+  reviewRecords ReviewRecord[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([userId])
   @@index([promptId])
   @@index([status])
+  @@index([reviewStatus])
+  @@index([reviewRiskLevel])
   @@index([status, publishedAt(sort: Desc)])
   @@index([status, likeCount(sort: Desc), publishedAt(sort: Desc)])
   @@index([status, viewCount(sort: Desc), publishedAt(sort: Desc)])
+}
+
+/** AI 审核记录保留每次判定快照，便于追溯误判与 Prompt 迭代。 */
+model ReviewRecord {
+  id           String          @id @default(cuid())
+  postId       String?
+  draftId      String?
+  userId       String
+  reviewType   ReviewType
+  contentHash  String
+  passed       Boolean
+  riskLevel    ReviewRiskLevel
+  categories   String[]        @default([])
+  qualityScore Float?
+  result       Json
+  post         Post?           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  draft        Draft?          @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+
+  @@index([postId, createdAt(sort: Desc)])
+  @@index([draftId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([contentHash])
+  @@index([riskLevel])
 }
 
 /** 用户对文章的点赞记录，likeCount 为冗余计数便于排序。 */

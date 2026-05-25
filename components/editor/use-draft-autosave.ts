@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { getLocalDraft, putLocalDraft } from "@/lib/draft-idb";
 import {
+  getDraftStorageKey,
   isAuthOrClientError,
   isNetworkError,
   shouldUploadLocal,
@@ -52,7 +53,7 @@ type RunSaveOptions = {
 
 export type UseDraftAutosaveResult = {
   /** EditorProvider hydrate 完成后用真实落库内容初始化 baseline，避免再次保存。 */
-  seedSavedSnapshot: (title: string, content: string) => void;
+  seedSavedSnapshot: (title: string, content: string, tags?: string[]) => void;
   /** 立即保存草稿（供顶部按钮、Ctrl+S 调用）。 */
   saveDraft: (options?: RunSaveOptions) => Promise<SaveDraftResult>;
   /** 联网后对比时间戳并上传 pending 本地草稿。 */
@@ -115,6 +116,7 @@ export function useDraftAutosave({
   // baseline = 最近一次成功落库的内容；null 表示尚未保存过。
   const lastSavedTitleRef = useRef<string | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
+  const lastSavedTagsRef = useRef<string[] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const localDebounceRef = useRef<number | null>(null);
   const onCreatedRef = useRef(onCreated);
@@ -133,9 +135,17 @@ export function useDraftAutosave({
     onStatusRef.current = onStatus;
   });
 
-  const seedSavedSnapshot = useCallback((titleVal: string, contentVal: string) => {
-    lastSavedTitleRef.current = titleVal;
-    lastSavedContentRef.current = contentVal;
+  const seedSavedSnapshot = useCallback(
+    (titleVal: string, contentVal: string, tagsVal: string[] = []) => {
+      lastSavedTitleRef.current = titleVal;
+      lastSavedContentRef.current = contentVal;
+      lastSavedTagsRef.current = [...tagsVal];
+    },
+    []
+  );
+
+  const getStorageKey = useCallback(() => {
+    return getDraftStorageKey(userIdRef.current, draftIdRef.current);
   }, []);
 
   const persistLocalDraft = useCallback(
@@ -157,13 +167,15 @@ export function useDraftAutosave({
       if (options?.cloudUpdatedAt !== undefined) {
         cloudUpdatedAt = options.cloudUpdatedAt;
       } else if (options?.pendingSync) {
-        const existing = await getLocalDraft(userIdRef.current);
+        const existing = await getLocalDraft(getStorageKey());
         cloudUpdatedAt = existing?.cloudUpdatedAt ?? null;
       }
 
+      const currentDraftId = options?.draftIdOverride ?? draftIdRef.current;
       const record: LocalDraftRecord = {
+        storageKey: getDraftStorageKey(userIdRef.current, currentDraftId),
         userId: userIdRef.current,
-        draftId: options?.draftIdOverride ?? draftIdRef.current,
+        draftId: currentDraftId,
         title: nextTitle,
         content: nextContent,
         tags: [...tagsRef.current],
@@ -205,7 +217,11 @@ export function useDraftAutosave({
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: nextTitle, content: nextContent }),
+        body: JSON.stringify({
+          title: nextTitle,
+          content: nextContent,
+          tags: tagsRef.current,
+        }),
         signal,
         credentials: "same-origin",
       });
@@ -249,9 +265,11 @@ export function useDraftAutosave({
         return { ok: false, reason: "empty", message: "请先输入正文再保存" };
       }
 
+      const nextTags = tagsRef.current;
       const isClean =
         lastSavedTitleRef.current === nextTitle &&
-        lastSavedContentRef.current === nextContent;
+        lastSavedContentRef.current === nextContent &&
+        JSON.stringify(lastSavedTagsRef.current) === JSON.stringify(nextTags);
       if (isClean && !options?.skipCleanCheck) {
         return { ok: true, skipped: true, draftId: draftIdRef.current };
       }
@@ -287,6 +305,7 @@ export function useDraftAutosave({
 
         lastSavedTitleRef.current = nextTitle;
         lastSavedContentRef.current = nextContent;
+        lastSavedTagsRef.current = [...nextTags];
 
         await persistLocalDraft({
           pendingSync: false,
@@ -348,7 +367,7 @@ export function useDraftAutosave({
     isSyncingRef.current = true;
 
     try {
-      const local = await getLocalDraft(userIdRef.current);
+      const local = await getLocalDraft(getStorageKey());
       if (!local || !local.pendingSync) {
         return;
       }
@@ -377,6 +396,9 @@ export function useDraftAutosave({
           draftIdRef.current = cloud.id;
           lastSavedTitleRef.current = cloud.title;
           lastSavedContentRef.current = cloud.content;
+          if (local.tags) {
+            lastSavedTagsRef.current = [...local.tags];
+          }
           onStatusRef.current("saved", new Date(cloud.updatedAt));
         }
         return;
@@ -392,6 +414,9 @@ export function useDraftAutosave({
 
       lastSavedTitleRef.current = local.title;
       lastSavedContentRef.current = local.content;
+      if (local.tags) {
+        lastSavedTagsRef.current = [...local.tags];
+      }
 
       await persistLocalDraft({
         pendingSync: false,
@@ -436,7 +461,8 @@ export function useDraftAutosave({
 
     return (
       lastSavedTitleRef.current !== nextTitle ||
-      lastSavedContentRef.current !== nextContent
+      lastSavedContentRef.current !== nextContent ||
+      JSON.stringify(lastSavedTagsRef.current) !== JSON.stringify(tagsRef.current)
     );
   }, []);
 
