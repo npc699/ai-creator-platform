@@ -45,9 +45,63 @@ export const navSidebarActive = [
 /** 标签、统计块等表面 */
 export const surfaceSoft = [bgBrandSurface, "text-brand-on-surface"].join(" ");
 
+/** 文章质量分徽章：品牌蓝底，与标签徽章形态一致。 */
+export const badgeArticleScore = [
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium",
+  bgBrandSurface,
+  "text-brand-on-surface ring-1 ring-inset ring-brand-border",
+].join(" ");
+
+/** 文章关键字标签徽章：灰色变体，与质量分同形态。 */
+export const badgeArticleTag = [
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium",
+  "bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200/80",
+].join(" ");
+
 export const surfaceSoftMuted = "bg-brand-surface/80 text-brand-muted";
 
 export const textSoftMuted = "text-brand-muted";
 
 /** 软边框（搜索框、通知钮等） */
 export const borderBrandSoft = "border-brand-border";
+
+/** 主 CTA（HomeSidebar 开始创作等）：蓝底白字 + hover 加深 */
+export const btnCreateAction = [
+  "inline-flex items-center justify-center gap-2 rounded-xl",
+  "bg-blue-400 px-4 py-3 text-sm font-semibold text-white!",
+  "transition hover:bg-blue-500 hover:text-white!",
+].join(" ");
+
+/** 编辑器顶栏文字按钮（返回、保存、预览等）：灰字 + 悬停灰底；链接需 ! 覆盖全局 a { color: inherit } */
+export const btnEditorHeaderGhost = [
+  "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-xl px-3",
+  "text-sm font-medium text-zinc-600! transition",
+  "hover:bg-zinc-100 hover:text-zinc-950!",
+].join(" ");
+
+export const btnEditorHeaderGhostDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-zinc-600!";
+
+/** 危险操作文字按钮（删除等）：常态红字，悬停淡红底 */
+export const btnEditorHeaderGhostDanger = [
+  "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-xl px-3",
+  "text-sm font-medium text-red-700! transition",
+  "hover:bg-red-50 hover:text-red-800!",
+].join(" ");
+
+export const btnEditorHeaderGhostDangerDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-red-700!";
+
+export const btnCreateActionDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-blue-400";
+
+/** 主操作实心按钮（存入素材库等）；链接需 ! 覆盖全局 a { color: inherit } */
+export const btnPrimary = [
+  "inline-flex items-center justify-center rounded-xl",
+  "bg-blue-400 text-sm font-medium text-white! shadow-sm",
+  "transition-colors hover:bg-blue-500 hover:text-white!",
+].join(" ");
+
+/** 主操作按钮禁用态：保持底色，避免 hover 变色 */
+export const btnPrimaryDisabled =
+  "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-blue-400";

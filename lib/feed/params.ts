@@ -48,7 +48,3 @@ export function buildHomeQuery(options: {
   return query ? `/?${query}` : "/";
 }
 
-export function getFeedChannelLabel(channel: FeedChannelParam): string | null {
-  if (!channel) return null;
-  return CHANNEL_LABELS[channel];
-}

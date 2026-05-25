@@ -1,5 +1,6 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { ScrollToTopButton } from "@/components/layout/scroll-to-top-button";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { Role } from "@/lib/generated/prisma/client";
 
@@ -27,17 +28,18 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
 
   return (
     <AuthSessionProvider>
-      <div className="min-h-screen bg-brand-surface/30">
+      <div className="flex min-h-screen flex-col bg-brand-surface/30">
         <AppHeader
           displayName={displayName}
           email={user.email}
           isAdmin={isAdmin}
           phone={user.phone}
         />
-        <div className="mx-auto flex w-full max-w-[1440px] items-stretch gap-4 px-4 pb-6 pt-4 lg:px-6">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 items-stretch gap-4 px-4 pb-6 pt-4 lg:px-6">
           <AppSidebar />
-          <div className="min-w-0 flex-1">{children}</div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
         </div>
+        <ScrollToTopButton />
       </div>
     </AuthSessionProvider>
   );

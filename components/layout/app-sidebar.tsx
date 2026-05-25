@@ -15,6 +15,10 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 import {
+  buildEditorHref,
+  getCurrentReturnPath,
+} from "@/lib/editor/editor-navigation";
+import {
   buildHomeQuery,
   parseFeedChannel,
   parseFeedSort,
@@ -162,6 +166,15 @@ function NavSection({
       ) : null}
       {items.map((item) => {
         const Icon = item.icon;
+        const href =
+          item.href === "/editor"
+            ? buildEditorHref({
+                from: getCurrentReturnPath(
+                  pathname,
+                  searchParams.toString()
+                ),
+              })
+            : item.href;
         const isActive = isNavItemActive(pathname, searchParams, item.href);
 
         return (
@@ -171,7 +184,7 @@ function NavSection({
               "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
               isActive ? navSidebarActive : navSidebarIdle
             )}
-            href={item.href}
+            href={href}
           >
             <Icon
               className={cn(
