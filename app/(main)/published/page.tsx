@@ -1,12 +1,17 @@
 ﻿import { ContentPanel } from "@/components/layout/content-panel";
 import { FeedArticleList } from "@/components/layout/feed-article-list";
+import { FeedScrollRestore } from "@/components/layout/feed-scroll-restore";
 import { FeedEmptyState } from "@/components/layout/feed-empty-state";
 import { FeedPageLayout } from "@/components/layout/feed-page-layout";
 import { PublishedSortNav } from "@/components/layout/published-sort-nav";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { parsePublishedFilter } from "@/lib/feed/panel-params";
+import { buildPublishedQuery, parsePublishedFilter } from "@/lib/feed/panel-params";
 import { getLikedPostIds } from "@/lib/posts/metrics";
+import {
+  buildPostHref,
+  getFeedScrollStorageKey,
+} from "@/lib/posts/reader-navigation";
 import {
   getAuthorLabel,
   mapPublishedPostToFeedItem,
@@ -25,6 +30,8 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
   const user = await getCurrentUser();
   const { filter: filterParam } = await searchParams;
   const filter = parsePublishedFilter(filterParam ?? null);
+  const publishedReturnPath = buildPublishedQuery({ filter });
+  const scrollStorageKey = getFeedScrollStorageKey(publishedReturnPath);
 
   const posts = user
     ? await prisma.post.findMany({
@@ -39,6 +46,7 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
           updatedAt: true,
           viewCount: true,
           likeCount: true,
+          tags: true,
           prompt: {
             select: { title: true },
           },
@@ -55,12 +63,14 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
     : new Set<string>();
   const feedItems = posts.map((post) => ({
     ...mapPublishedPostToFeedItem(post, authorLabel),
+    href: buildPostHref(post.id, publishedReturnPath),
     likedByViewer: likedPostIds.has(post.id),
     canLike: Boolean(user),
   }));
 
   return (
     <FeedPageLayout>
+      <FeedScrollRestore storageKey={scrollStorageKey} />
       <ContentPanel header={<PublishedSortNav />} suspenseHeader>
         {feedItems.length === 0 ? (
           <FeedEmptyState
@@ -69,7 +79,7 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
             message={getPublishedEmptyMessage(filter)}
           />
         ) : (
-          <FeedArticleList items={feedItems} />
+          <FeedArticleList items={feedItems} scrollStorageKey={scrollStorageKey} />
         )}
       </ContentPanel>
     </FeedPageLayout>

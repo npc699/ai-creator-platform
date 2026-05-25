@@ -12,6 +12,8 @@ export type LocalDraftRecord = {
   draftId: string | null;
   title: string;
   content: string;
+  /** 发布前暂存的标签，云端 Draft 无此字段时以本地为准。 */
+  tags?: string[];
   /** 最后一次本地写入时间（ISO）。 */
   localUpdatedAt: string;
   /** 最后一次云端成功保存时间；尚未落云时为 null。 */

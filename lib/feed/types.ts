@@ -7,6 +7,8 @@ export type FeedArticleItem = {
   excerpt: string;
   /** 内容质量打分，后续由打分接口返回；当前占位数据写死 */
   score: number;
+  /** 文章关键字标签 */
+  tags?: string[];
   views: number;
   likes: number;
   href?: string;

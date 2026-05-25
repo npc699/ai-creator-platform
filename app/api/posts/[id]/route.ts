@@ -29,6 +29,7 @@ async function loadOwnedPost(id: string) {
       publishedAt: true,
       updatedAt: true,
       promptId: true,
+      tags: true,
     },
   });
 
@@ -63,6 +64,7 @@ export async function GET(
       publishedAt: post.publishedAt,
       updatedAt: post.updatedAt,
       promptId: post.promptId,
+      tags: post.tags,
     },
   });
 }
@@ -92,7 +94,7 @@ export async function PUT(
     );
   }
 
-  const { title, content, promptId } = parsed.data;
+  const { title, content, promptId, tags } = parsed.data;
 
   const promptError = await assertOwnedPromptId(result.user.id, promptId);
   if (promptError) {
@@ -105,6 +107,7 @@ export async function PUT(
       title,
       content,
       promptId: promptId ?? null,
+      ...(tags !== undefined ? { tags } : {}),
     },
     select: {
       id: true,

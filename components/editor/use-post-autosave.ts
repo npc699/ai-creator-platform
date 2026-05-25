@@ -18,6 +18,7 @@ type PostPayload = {
 type UsePostAutosaveParams = {
   postId: string;
   title: string;
+  tags: string[];
   getContent: () => string;
   isOnline: boolean;
   isReady: boolean;
@@ -30,7 +31,7 @@ type RunSaveOptions = {
 };
 
 export type UsePostAutosaveResult = {
-  seedSavedSnapshot: (title: string, content: string) => void;
+  seedSavedSnapshot: (title: string, content: string, tags: string[]) => void;
   saveDraft: (options?: RunSaveOptions) => Promise<SaveDraftResult>;
 };
 
@@ -41,6 +42,7 @@ function stripHtmlText(html: string) {
 export function usePostAutosave({
   postId,
   title,
+  tags,
   getContent,
   isOnline,
   isReady,
@@ -49,6 +51,7 @@ export function usePostAutosave({
 }: UsePostAutosaveParams): UsePostAutosaveResult {
   const postIdRef = useRef(postId);
   const titleRef = useRef(title);
+  const tagsRef = useRef(tags);
   const getContentRef = useRef(getContent);
   const isOnlineRef = useRef(isOnline);
   const isReadyRef = useRef(isReady);
@@ -56,12 +59,14 @@ export function usePostAutosave({
   const isSavingRef = useRef(false);
   const lastSavedTitleRef = useRef<string | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
+  const lastSavedTagsRef = useRef<string[] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const onStatusRef = useRef(onStatus);
 
   useEffect(() => {
     postIdRef.current = postId;
     titleRef.current = title;
+    tagsRef.current = tags;
     getContentRef.current = getContent;
     isOnlineRef.current = isOnline;
     isReadyRef.current = isReady;
@@ -69,10 +74,14 @@ export function usePostAutosave({
     onStatusRef.current = onStatus;
   });
 
-  const seedSavedSnapshot = useCallback((titleVal: string, contentVal: string) => {
-    lastSavedTitleRef.current = titleVal;
-    lastSavedContentRef.current = contentVal;
-  }, []);
+  const seedSavedSnapshot = useCallback(
+    (titleVal: string, contentVal: string, tagsVal: string[]) => {
+      lastSavedTitleRef.current = titleVal;
+      lastSavedContentRef.current = contentVal;
+      lastSavedTagsRef.current = [...tagsVal];
+    },
+    []
+  );
 
   const runSave = useCallback(
     async (options?: RunSaveOptions): Promise<SaveDraftResult> => {
@@ -99,9 +108,11 @@ export function usePostAutosave({
         return { ok: false, reason: "empty", message: "请先输入标题再保存" };
       }
 
+      const nextTags = tagsRef.current;
       const isClean =
         lastSavedTitleRef.current === nextTitle &&
-        lastSavedContentRef.current === nextContent;
+        lastSavedContentRef.current === nextContent &&
+        JSON.stringify(lastSavedTagsRef.current) === JSON.stringify(nextTags);
       if (isClean && !options?.skipCleanCheck) {
         return { ok: true, skipped: true };
       }
@@ -125,7 +136,11 @@ export function usePostAutosave({
         const response = await fetch(`/api/posts/${postIdRef.current}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: nextTitle, content: nextContent }),
+          body: JSON.stringify({
+            title: nextTitle,
+            content: nextContent,
+            tags: nextTags,
+          }),
           signal: controller.signal,
           credentials: "same-origin",
         });
@@ -145,6 +160,7 @@ export function usePostAutosave({
 
         lastSavedTitleRef.current = nextTitle;
         lastSavedContentRef.current = nextContent;
+        lastSavedTagsRef.current = [...nextTags];
         onStatusRef.current("saved", new Date(json.post.updatedAt));
         return { ok: true };
       } catch (error) {

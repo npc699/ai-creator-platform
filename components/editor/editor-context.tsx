@@ -26,6 +26,7 @@ import {
   type CloudDraftSnapshot,
 } from "@/lib/draft-sync";
 import type { AiGenerateMode } from "@/lib/ai/schema";
+import { canAddPostTag, normalizePostTag } from "@/lib/posts/tags";
 
 type StartAiGenerationInput = {
   mode: AiGenerateMode;
@@ -69,6 +70,10 @@ type EditorContextValue = {
   // Part 3 草稿状态：UI 顶部状态条与恢复横幅都从这里读取。
   title: string;
   setTitle: (value: string) => void;
+  tags: string[];
+  setTags: (tags: string[]) => void;
+  addTag: (raw: string) => { ok: true } | { ok: false; message: string };
+  removeTag: (tag: string) => void;
   draftId: string | null;
   hydratedContent: string | null;
   saveStatus: AutosaveStatus;
@@ -336,6 +341,7 @@ export function EditorProvider({
 
   // 草稿相关状态：title 是 UI 受控字段，content 不进 state，避免高频输入触发整树重渲染。
   const [title, setTitle] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [hydratedContent, setHydratedContent] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
@@ -386,6 +392,32 @@ export function EditorProvider({
     []
   );
 
+  const addTag = useCallback(
+    (raw: string) => {
+      const normalized = normalizePostTag(raw);
+      if (!normalized.ok) {
+        return normalized;
+      }
+
+      const canAdd = canAddPostTag(tags, normalized.tag);
+      if (!canAdd.ok) {
+        return canAdd;
+      }
+
+      setTags([...tags, normalized.tag]);
+      return { ok: true as const };
+    },
+    [tags]
+  );
+
+  const removeTag = useCallback((tag: string) => {
+    setTags((current) => current.filter((item) => item !== tag));
+  }, []);
+
+  const replaceTags = useCallback((next: string[]) => {
+    setTags(next);
+  }, []);
+
   const {
     seedSavedSnapshot: seedDraftSnapshot,
     saveDraft: saveDraftToCloud,
@@ -395,6 +427,7 @@ export function EditorProvider({
   } = useDraftAutosave({
     userId,
     title,
+    tags,
     getContent,
     draftId,
     isOnline,
@@ -408,6 +441,7 @@ export function EditorProvider({
     usePostAutosave({
       postId: postId ?? "",
       title,
+      tags,
       getContent,
       isOnline,
       isReady: isAutosaveReady,
@@ -506,6 +540,7 @@ export function EditorProvider({
 
     void (async () => {
       setIsAutosaveReady(false);
+      setTags([]);
 
       // 切换草稿/新建时先清空正文，避免加载完成前仍显示上一份内容。
       if (!postId && editorRef.current) {
@@ -528,16 +563,19 @@ export function EditorProvider({
               post: {
                 title: string;
                 content: string;
+                tags: string[];
                 updatedAt: string;
               };
             };
 
+            const loadedTags = data.post.tags ?? [];
             setTitle(data.post.title);
+            setTags(loadedTags);
             setHydratedContent(data.post.content);
             setNoticeBanner("已加载文章，修改后将自动保存");
             setSaveStatus("saved");
             setLastSavedAt(new Date(data.post.updatedAt));
-            seedPostSnapshot(data.post.title, data.post.content);
+            seedPostSnapshot(data.post.title, data.post.content, loadedTags);
           } else {
             setNoticeBanner("加载文章失败，请稍后重试");
             setSaveStatus("error");
@@ -601,7 +639,11 @@ export function EditorProvider({
             updatedAt: requestedDraft.updatedAt,
           };
 
+          const loadedTags =
+            pick.source === "local" ? (localDraft?.tags ?? []) : [];
+
           setTitle(loaded.title);
+          setTags(loadedTags);
           setDraftId(loaded.id);
           setHydratedContent(loaded.content);
           setNoticeBanner(
@@ -620,6 +662,7 @@ export function EditorProvider({
         if (initialDraftId) {
           setNoticeBanner("草稿不存在或已发布");
           setTitle("");
+          setTags([]);
           setDraftId(null);
           setHydratedContent("");
           seedDraftSnapshot("", "");
@@ -629,6 +672,7 @@ export function EditorProvider({
         // 无 draftId：新建空白稿，不恢复 latest / IDB pending。
         await clearLocalDraft(userId);
         setTitle("");
+        setTags([]);
         setDraftId(null);
         setHydratedContent("");
         seedDraftSnapshot("", "");
@@ -699,6 +743,15 @@ export function EditorProvider({
       editor.off("update", handleUpdate);
     };
   }, [editor, isAutosaveReady, isPostMode, scheduleLocalPersist]);
+
+  // 标签变更时同步写入本地草稿（仅草稿模式）。
+  useEffect(() => {
+    if (isPostMode || !isAutosaveReady) {
+      return;
+    }
+
+    scheduleLocalPersist();
+  }, [isAutosaveReady, isPostMode, scheduleLocalPersist, tags]);
 
   // 把恢复出来的正文推入 TipTap：依赖只有 [editor, hydratedContent]，正常编辑流不会触发；
   // 编辑器实例切换（热更新等）时会重新对齐，避免 ref dedupe 引发的状态错位。
@@ -870,6 +923,10 @@ export function EditorProvider({
       userId,
       title,
       setTitle,
+      tags,
+      setTags: replaceTags,
+      addTag,
+      removeTag,
       draftId,
       hydratedContent,
       saveStatus,
@@ -917,6 +974,10 @@ export function EditorProvider({
       selectedText,
       startGenerate,
       stopGenerate,
+      tags,
+      replaceTags,
+      addTag,
+      removeTag,
       title,
       userId,
     ]

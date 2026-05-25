@@ -45,6 +45,19 @@ export const navSidebarActive = [
 /** 标签、统计块等表面 */
 export const surfaceSoft = [bgBrandSurface, "text-brand-on-surface"].join(" ");
 
+/** 文章质量分徽章：品牌蓝底，与标签徽章形态一致。 */
+export const badgeArticleScore = [
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium",
+  bgBrandSurface,
+  "text-brand-on-surface ring-1 ring-inset ring-brand-border",
+].join(" ");
+
+/** 文章关键字标签徽章：灰色变体，与质量分同形态。 */
+export const badgeArticleTag = [
+  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium",
+  "bg-zinc-100 text-zinc-600 ring-1 ring-inset ring-zinc-200/80",
+].join(" ");
+
 export const surfaceSoftMuted = "bg-brand-surface/80 text-brand-muted";
 
 export const textSoftMuted = "text-brand-muted";

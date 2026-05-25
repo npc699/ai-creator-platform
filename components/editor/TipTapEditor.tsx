@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type PointerEvent } from "react";
 import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 
+import { EditorPostTagsDisplay } from "@/components/editor/editor-post-tags-display";
 import { createEditorExtensions } from "@/components/editor/editor-extensions";
 import { Toolbar } from "@/components/editor/Toolbar";
 import { useEditorContext } from "@/components/editor/editor-context";
@@ -173,6 +174,7 @@ export function TipTapEditor() {
             type="text"
             value={title}
           />
+          <EditorPostTagsDisplay />
         </div>
 
         <EditorContent editor={editor} />

@@ -21,6 +21,19 @@ export function formatPublishedTime(date: Date) {
   });
 }
 
+/** 详情页日期展示，与参考布局一致（不含时分）。 */
+export function formatPostArticleDate(date: Date) {
+  return date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+export function getPostDisplayScore() {
+  return DEFAULT_FEED_SCORE;
+}
+
 type PublishedPostRecord = {
   id: string;
   title: string;
@@ -30,6 +43,7 @@ type PublishedPostRecord = {
   updatedAt: Date;
   viewCount: number;
   likeCount: number;
+  tags: string[];
   prompt: { title: string } | null;
 };
 
@@ -57,11 +71,33 @@ export function mapPublishedPostToFeedItem(
     title: post.title,
     excerpt: buildPostExcerpt(post.content),
     score: DEFAULT_FEED_SCORE,
+    tags: post.tags,
     views: post.viewCount,
     likes: post.likeCount,
     href: `/posts/${post.id}`,
     singleLineExcerpt: true,
     publishStatus: mapPostStatusToPublishStatus(post.status),
+    persistMetrics: true,
+  };
+}
+
+type HomePostRecord = Omit<PublishedPostRecord, "prompt"> & {
+  user: {
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+};
+
+/** 首页 Feed：全站已发布文章，不展示作者私有的上线状态角标。 */
+export function mapPostToHomeFeedItem(post: HomePostRecord): FeedArticleItem {
+  const item = mapPublishedPostToFeedItem(
+    { ...post, prompt: null },
+    getAuthorLabel(post.user)
+  );
+  return {
+    ...item,
+    publishStatus: undefined,
     persistMetrics: true,
   };
 }

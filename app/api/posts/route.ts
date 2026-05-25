@@ -79,7 +79,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, content, draftId, promptId } = parsed.data;
+  const { title, content, draftId, promptId, tags } = parsed.data;
 
   const promptError = await assertOwnedPromptId(user.id, promptId);
   if (promptError) {
@@ -112,6 +112,7 @@ export async function POST(request: Request) {
           publishedAt: new Date(),
           draftId: draftId ?? null,
           promptId: promptId ?? null,
+          tags: tags ?? [],
         },
         select: {
           id: true,

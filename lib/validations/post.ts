@@ -22,17 +22,24 @@ const postContentSchema = z
 
 const draftIdSchema = z.string().trim().min(1).optional().nullable();
 
+const postTagsSchema = z
+  .array(z.string().trim().min(1, "标签不能为空").max(20, "单个标签不能超过 20 字"))
+  .max(8, "标签不能超过 8 个")
+  .optional();
+
 export const postPublishSchema = z.object({
   title: postTitleSchema,
   content: postContentSchema,
   draftId: draftIdSchema,
   promptId: draftIdSchema,
+  tags: postTagsSchema,
 });
 
 export const postUpdateSchema = z.object({
   title: postTitleSchema,
   content: postContentSchema,
   promptId: draftIdSchema,
+  tags: postTagsSchema,
 });
 
 /** 详情页上线 / 下线切换 */

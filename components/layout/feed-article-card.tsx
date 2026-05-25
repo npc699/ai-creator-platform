@@ -4,8 +4,9 @@ import { Eye, Heart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
+import { ArticleMetaBadges } from "@/components/layout/article-meta-badges";
+import { saveFeedScrollPosition } from "@/components/layout/feed-scroll-restore";
 import { formatFeedMetric } from "@/lib/feed/format-metric";
-import { formatFeedScoreLabel } from "@/lib/feed/format-score";
 import type { FeedArticleItem } from "@/lib/feed/types";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,10 @@ export type FeedArticleCardProps = Omit<
   isDeleting?: boolean;
   onDelete?: () => void;
   showMetrics?: boolean;
+  /** 跳转详情前写入 sessionStorage，配合 FeedScrollRestore 恢复列表滚动位置。 */
+  scrollStorageKey?: string;
+  /** 首页分页列表：已加载条数，用于返回时预拉取到同等深度。 */
+  scrollLoadedCount?: number;
 };
 
 export function FeedArticleCard({
@@ -27,6 +32,7 @@ export function FeedArticleCard({
   title,
   excerpt,
   score,
+  tags = [],
   views,
   likes,
   href,
@@ -38,6 +44,8 @@ export function FeedArticleCard({
   isDeleting = false,
   onDelete,
   showMetrics = true,
+  scrollStorageKey,
+  scrollLoadedCount,
 }: FeedArticleCardProps) {
   const sourceKey = `${postId ?? ""}:${initialLiked}:${likes}`;
   const [syncedKey, setSyncedKey] = useState(sourceKey);
@@ -126,6 +134,17 @@ export function FeedArticleCard({
           aria-label={`查看文章：${title}`}
           className="absolute inset-0 z-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
           href={href}
+          onClick={() => {
+            if (scrollStorageKey) {
+              saveFeedScrollPosition(scrollStorageKey, scrollLoadedCount);
+            }
+          }}
+          onPointerDown={() => {
+            // 早于路由切换写入，避免个别环境下 onClick 未触发导致无法恢复滚动
+            if (scrollStorageKey) {
+              saveFeedScrollPosition(scrollStorageKey, scrollLoadedCount);
+            }
+          }}
         />
       ) : null}
 
@@ -191,11 +210,7 @@ export function FeedArticleCard({
             showMetrics && "justify-between"
           )}
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">
-              {formatFeedScoreLabel(score)}
-            </span>
-          </div>
+          <ArticleMetaBadges score={score} tags={tags} />
 
           {showMetrics ? (
             <div className="flex flex-col items-end gap-1">

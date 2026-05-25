@@ -16,8 +16,8 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is not set");
 }
 
-/** Prompt 增加 isOfficial / PromptFavorite 后更新此 key，强制重建客户端 */
-const PRISMA_CLIENT_CACHE_KEY = "prompt-official-v1";
+/** schema 变更后更新此 key，避免 dev 热更新沿用旧 PrismaClient */
+const PRISMA_CLIENT_CACHE_KEY = "post-tags-v1";
 
 const adapter = new PrismaPg(databaseUrl);
 

@@ -133,6 +133,7 @@ model Post {
   publishedAt DateTime?
   viewCount   Int        @default(0)
   likeCount   Int        @default(0)
+  tags        String[]   @default([])
   userId      String
   promptId    String?
   draftId     String?    @unique
@@ -147,6 +148,9 @@ model Post {
   @@index([userId])
   @@index([promptId])
   @@index([status])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([status, likeCount(sort: Desc), publishedAt(sort: Desc)])
+  @@index([status, viewCount(sort: Desc), publishedAt(sort: Desc)])
 }
 
 /** 用户对文章的点赞记录，likeCount 为冗余计数便于排序。 */

@@ -24,6 +24,7 @@ type DraftPayload = {
 type UseDraftAutosaveParams = {
   userId: string;
   title: string;
+  tags: string[];
   // 用 getter 拉取正文，避免把高频变化的 HTML 提升为 React state 导致整棵编辑器树重渲染。
   getContent: () => string;
   draftId: string | null;
@@ -92,6 +93,7 @@ async function fetchCloudDraft(
 export function useDraftAutosave({
   userId,
   title,
+  tags,
   getContent,
   draftId,
   isOnline,
@@ -102,6 +104,7 @@ export function useDraftAutosave({
 }: UseDraftAutosaveParams): UseDraftAutosaveResult {
   const userIdRef = useRef(userId);
   const titleRef = useRef(title);
+  const tagsRef = useRef(tags);
   const getContentRef = useRef(getContent);
   const draftIdRef = useRef<string | null>(draftId);
   const isOnlineRef = useRef(isOnline);
@@ -120,6 +123,7 @@ export function useDraftAutosave({
   useEffect(() => {
     userIdRef.current = userId;
     titleRef.current = title;
+    tagsRef.current = tags;
     getContentRef.current = getContent;
     draftIdRef.current = draftId;
     isOnlineRef.current = isOnline;
@@ -162,6 +166,7 @@ export function useDraftAutosave({
         draftId: options?.draftIdOverride ?? draftIdRef.current,
         title: nextTitle,
         content: nextContent,
+        tags: [...tagsRef.current],
         localUpdatedAt: now,
         cloudUpdatedAt,
         pendingSync: options?.pendingSync ?? true,
@@ -440,7 +445,7 @@ export function useDraftAutosave({
       return;
     }
     scheduleLocalPersist();
-  }, [enabled, title, scheduleLocalPersist]);
+  }, [enabled, tags, title, scheduleLocalPersist]);
 
   useEffect(() => {
     if (!enabled) {
