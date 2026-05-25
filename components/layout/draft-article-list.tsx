@@ -5,7 +5,8 @@ import { useCallback, useState } from "react";
 
 import { FeedArticleCard } from "@/components/layout/feed-article-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { clearLocalDraft, getLocalDraft } from "@/lib/draft-idb";
+import { clearNewDraftLocal, getLocalDraft } from "@/lib/draft-idb";
+import { getDraftStorageKey } from "@/lib/draft-sync";
 import type { FeedArticleItem } from "@/lib/feed/types";
 
 type DraftArticleListProps = {
@@ -56,9 +57,9 @@ export function DraftArticleList({ items, userId }: DraftArticleListProps) {
       }
 
       if (userId) {
-        const local = await getLocalDraft(userId);
+        const local = await getLocalDraft(getDraftStorageKey(userId, null));
         if (local?.draftId === pendingDelete.id) {
-          await clearLocalDraft(userId);
+          await clearNewDraftLocal(userId);
         }
       }
 

@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { FeedChannelParam, FeedSort } from "@/lib/feed/params";
-import { computeHomeRecommendScore } from "@/lib/posts/home-recommend-score";
+import {
+  computeHomeRecommendScore,
+  RECOMMEND_FORMULA_VERSION,
+} from "@/lib/posts/home-recommend-score";
 
 /** 首页 Feed 分页模式，与 orderBy 字段一一对应。 */
 export type HomePaginationMode =
@@ -39,6 +42,8 @@ const homeCursorSchema = z.discriminatedUnion("mode", [
     id: z.string().min(1),
     /** 推荐分计算的固定参考时间，整段翻页会话内保持一致 */
     asOf: isoDate,
+    /** 推荐分公式版本；缺失或非当前版本时分页游标作废 */
+    formulaVersion: z.number().int().positive().optional(),
   }),
   z.object({
     mode: z.literal("hot"),
@@ -62,6 +67,7 @@ type PostCursorSource = {
   updatedAt: Date;
   viewCount: number;
   likeCount: number;
+  qualityScore?: number | null;
 };
 
 export function resolveHomePaginationMode(
@@ -124,10 +130,12 @@ export function buildHomeCursorFromPost(
           viewCount: post.viewCount,
           publishedAt: post.publishedAt,
           updatedAt: post.updatedAt,
+          qualityScore: post.qualityScore,
           now: scoreAsOf,
         }),
         id: post.id,
         asOf: scoreAsOf.toISOString(),
+        formulaVersion: RECOMMEND_FORMULA_VERSION,
       };
     case "hot":
       return {
@@ -151,7 +159,9 @@ export function encodeHomeCursor(cursor: HomeFeedCursor): string {
   return Buffer.from(json, "utf8").toString("base64url");
 }
 
-export function decodeHomeCursor(raw: string | null | undefined): HomeFeedCursor | null {
+export function decodeHomeCursor(
+  raw: string | null | undefined
+): HomeFeedCursor | null {
   if (!raw?.trim()) {
     return null;
   }
@@ -166,7 +176,9 @@ export function decodeHomeCursor(raw: string | null | undefined): HomeFeedCursor
 }
 
 /** DESC 排序下的 keyset：取字典序严格小于游标的下一页。 */
-export function buildHomeCursorWhere(cursor: HomeFeedCursor): Prisma.PostWhereInput {
+export function buildHomeCursorWhere(
+  cursor: HomeFeedCursor
+): Prisma.PostWhereInput {
   switch (cursor.mode) {
     case "recommend":
       // 综合分排序走 raw SQL，此处不应被 Prisma findMany 调用

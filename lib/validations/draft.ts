@@ -18,7 +18,6 @@ const contentSchema = z
   .min(1, "草稿内容不能为空")
   .max(DRAFT_CONTENT_MAX_BYTES, "草稿内容超出大小限制");
 
-// promptId 透传 cuid，未填留空，避免空字符串当成无效 id 写入。
 const promptIdSchema = z
   .string()
   .trim()
@@ -26,16 +25,23 @@ const promptIdSchema = z
   .optional()
   .nullable();
 
+const draftTagsSchema = z
+  .array(z.string().trim().min(1, "标签不能为空").max(20, "单个标签不能超过 20 字"))
+  .max(8, "标签不能超过 8 个")
+  .optional();
+
 export const draftCreateSchema = z.object({
   title: titleSchema,
   content: contentSchema,
   promptId: promptIdSchema,
+  tags: draftTagsSchema,
 });
 
 export const draftUpdateSchema = z.object({
   title: titleSchema,
   content: contentSchema,
   promptId: promptIdSchema,
+  tags: draftTagsSchema,
 });
 
 export type DraftCreateInput = z.infer<typeof draftCreateSchema>;

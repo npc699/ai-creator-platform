@@ -5,6 +5,8 @@ import { FeedPageLayout } from "@/components/layout/feed-page-layout";
 import { PostArticleHeader } from "@/components/layout/post-article-header";
 import { PostReaderActions } from "@/components/layout/post-reader-actions";
 import { PostReaderHeader } from "@/components/layout/post-reader-header";
+import { PostPublishedToast } from "@/components/layout/post-published-toast";
+import { PostReviewPendingBanner } from "@/components/layout/post-review-pending-banner";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -16,8 +18,45 @@ import { getPostReaderBackTarget } from "@/lib/posts/reader-navigation";
 
 type PostPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; published?: string }>;
 };
+
+type QualityDimension = {
+  score: number;
+  reason: string;
+};
+
+const QUALITY_DIMENSION_META: Record<string, { label: string; weight: number }> = {
+  titleAppeal: { label: "标题吸引力", weight: 15 },
+  completeness: { label: "内容完整度", weight: 25 },
+  structure: { label: "逻辑结构", weight: 20 },
+  readability: { label: "可读性", weight: 15 },
+  originality: { label: "原创性", weight: 15 },
+  imageRelevance: { label: "配图相关性", weight: 10 },
+};
+
+function getQualityDimensions(result: unknown) {
+  if (!result || typeof result !== "object" || !("quality" in result)) {
+    return null;
+  }
+
+  const quality = (result as { quality?: unknown }).quality;
+  if (!quality || typeof quality !== "object" || !("dimensions" in quality)) {
+    return null;
+  }
+
+  const dimensions = (quality as { dimensions?: unknown }).dimensions;
+  if (!dimensions || typeof dimensions !== "object") {
+    return null;
+  }
+
+  return Object.entries(dimensions as Record<string, QualityDimension>).filter(
+    ([key, value]) =>
+      key in QUALITY_DIMENSION_META &&
+      typeof value?.score === "number" &&
+      typeof value?.reason === "string"
+  );
+}
 
 export default async function PostPage({ params, searchParams }: PostPageProps) {
   const { id } = await params;
@@ -37,6 +76,13 @@ export default async function PostPage({ params, searchParams }: PostPageProps) 
       viewCount: true,
       likeCount: true,
       tags: true,
+      qualityScore: true,
+      reviewStatus: true,
+      reviewRecords: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { result: true },
+      },
       user: {
         select: {
           name: true,
@@ -64,6 +110,11 @@ export default async function PostPage({ params, searchParams }: PostPageProps) 
     : `更新于 ${formatPostArticleDate(post.updatedAt)}`;
 
   const backTarget = getPostReaderBackTarget({ from, isAuthor });
+  // PENDING 状态下维度全 0 无意义，不展示折叠区域。
+  const qualityDimensions =
+    post.reviewStatus !== "PENDING"
+      ? getQualityDimensions(post.reviewRecords[0]?.result)
+      : null;
 
   return (
     <FeedPageLayout>
@@ -81,18 +132,54 @@ export default async function PostPage({ params, searchParams }: PostPageProps) 
         }
       >
         <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
+          <PostPublishedToast />
           <PostArticleHeader
             authorImage={post.user.image}
             authorName={getAuthorLabel(post.user)}
             likeCount={post.likeCount}
             postId={post.id}
             publishedLabel={publishedLabel}
-            score={getPostDisplayScore()}
+            reviewPending={isAuthor && post.reviewStatus === "PENDING"}
+            score={getPostDisplayScore(post.qualityScore)}
             tags={post.tags}
             title={post.title}
             trackViews={post.status === "PUBLISHED"}
             viewCount={post.viewCount}
           />
+
+          {isAuthor && post.reviewStatus === "PENDING" ? (
+            <PostReviewPendingBanner postId={post.id} />
+          ) : null}
+
+          {qualityDimensions?.length ? (
+            <details className="mt-4 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm">
+              <summary className="cursor-pointer font-medium text-zinc-700">
+                查看质量评分细项
+              </summary>
+              <div className="mt-3 space-y-2">
+                {qualityDimensions.map(([key, value]) => {
+                  const meta = QUALITY_DIMENSION_META[key];
+                  return (
+                    <div
+                      className="flex flex-col gap-1 rounded-xl bg-zinc-50 px-3 py-2 text-zinc-600"
+                      key={key}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-zinc-800">
+                          {meta?.label ?? key}
+                          <span className="ml-1.5 text-xs font-normal text-zinc-400">
+                            占比 {meta?.weight ?? 0}%
+                          </span>
+                        </span>
+                        <span>{value.score}/10</span>
+                      </div>
+                      <p className="text-xs leading-5 text-zinc-500">{value.reason}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </details>
+          ) : null}
 
           {/* 复用编辑器 .tiptap-editor 排版，保证发布页与编辑页所见一致 */}
           <div

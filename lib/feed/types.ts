@@ -5,8 +5,10 @@ export type FeedArticleItem = {
   time: string;
   title: string;
   excerpt: string;
-  /** 内容质量打分，后续由打分接口返回；当前占位数据写死 */
-  score: number;
+  /** 内容质量打分，null 表示尚未评分（待审核或草稿） */
+  score: number | null;
+  /** 审核未完成标记，仅作者视角使用 */
+  reviewPending?: boolean;
   /** 文章关键字标签 */
   tags?: string[];
   views: number;

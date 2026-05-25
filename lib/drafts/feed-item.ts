@@ -1,4 +1,3 @@
-import { DEFAULT_FEED_SCORE } from "@/lib/feed/format-score";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";
 import type { FeedArticleItem } from "@/lib/feed/types";
 import { formatPublishedTime, getAuthorLabel } from "@/lib/posts/feed-item";
@@ -24,7 +23,7 @@ export function mapDraftToFeedItem(
     time: formatPublishedTime(draft.updatedAt),
     title: draft.title || "无标题草稿",
     excerpt: buildPostExcerpt(draft.content),
-    score: DEFAULT_FEED_SCORE,
+    score: null,
     views: 0,
     likes: 0,
     href: `/editor?draftId=${draft.id}`,

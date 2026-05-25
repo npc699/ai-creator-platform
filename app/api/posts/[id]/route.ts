@@ -6,6 +6,12 @@ import { prisma } from "@/lib/db";
 import { PostStatus } from "@/lib/generated/prisma/client";
 import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import {
+  buildReviewRecordResult,
+  hashReviewContent,
+  reviewContent,
+  toPrismaReviewRiskLevel,
+} from "@/lib/review";
+import {
   postStatusPatchSchema,
   postUpdateSchema,
 } from "@/lib/validations/post";
@@ -26,6 +32,10 @@ async function loadOwnedPost(id: string) {
       title: true,
       content: true,
       status: true,
+      qualityScore: true,
+      reviewStatus: true,
+      reviewRiskLevel: true,
+      reviewedAt: true,
       publishedAt: true,
       updatedAt: true,
       promptId: true,
@@ -61,6 +71,10 @@ export async function GET(
       title: post.title,
       content: post.content,
       status: post.status,
+      qualityScore: post.qualityScore,
+      reviewStatus: post.reviewStatus,
+      reviewRiskLevel: post.reviewRiskLevel,
+      reviewedAt: post.reviewedAt,
       publishedAt: post.publishedAt,
       updatedAt: post.updatedAt,
       promptId: post.promptId,
@@ -94,24 +108,35 @@ export async function PUT(
     );
   }
 
-  const { title, content, promptId, tags } = parsed.data;
+  const { promptId } = parsed.data;
 
   const promptError = await assertOwnedPromptId(result.user.id, promptId);
   if (promptError) {
     return promptError;
   }
 
+  // 已发布文章的正文/标签修改须走 EditDraft + publish-update，禁止直写 Post。
+  if (result.post.status === PostStatus.PUBLISHED || result.post.status === PostStatus.ARCHIVED) {
+    return NextResponse.json(
+      {
+        error:
+          "已发布文章请通过编辑器修改并点击「更新发布」，内容将经审核后再上线",
+      },
+      { status: 400 }
+    );
+  }
+
   const updated = await prisma.post.update({
     where: { id },
     data: {
-      title,
-      content,
       promptId: promptId ?? null,
-      ...(tags !== undefined ? { tags } : {}),
     },
     select: {
       id: true,
       updatedAt: true,
+      qualityScore: true,
+      reviewStatus: true,
+      reviewRiskLevel: true,
     },
   });
 
@@ -146,24 +171,102 @@ export async function PATCH(
   const { status } = parsed.data;
   const { post } = result;
 
-  const updated = await prisma.post.update({
-    where: { id },
-    data: {
-      status,
-      publishedAt:
-        status === PostStatus.PUBLISHED
-          ? (post.publishedAt ?? new Date())
-          : post.publishedAt,
-    },
-    select: {
-      id: true,
-      status: true,
-      publishedAt: true,
-      updatedAt: true,
-    },
+  const shouldReviewBeforePublish =
+    status === PostStatus.PUBLISHED && post.status !== PostStatus.PUBLISHED;
+  const currentContentHash = hashReviewContent(post.title, post.content, post.tags);
+  const latestReview = shouldReviewBeforePublish
+    ? await prisma.reviewRecord.findFirst({
+        where: { postId: id },
+        orderBy: { createdAt: "desc" },
+        select: { contentHash: true, riskLevel: true },
+      })
+    : null;
+  const needsReview =
+    shouldReviewBeforePublish &&
+    (!latestReview ||
+      latestReview.contentHash !== currentContentHash ||
+      latestReview.riskLevel === "HIGH");
+  const reviewResult = needsReview
+    ? await reviewContent({
+        title: post.title,
+        content: post.content,
+        tags: post.tags,
+        postId: id,
+        userId: result.user.id,
+        reviewType: "UPDATE",
+      })
+    : null;
+
+  if (reviewResult?.status === "REJECTED") {
+    await prisma.reviewRecord.create({
+      data: {
+        postId: id,
+        userId: result.user.id,
+        reviewType: "UPDATE",
+        contentHash: reviewResult.contentHash,
+        passed: reviewResult.safety.passed,
+        riskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+        categories: reviewResult.safety.categories,
+        qualityScore: reviewResult.qualityScore,
+        result: buildReviewRecordResult(reviewResult),
+      },
+    });
+
+    return NextResponse.json(
+      { error: reviewResult.safety.reason, reviewResult },
+      { status: 422 }
+    );
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedPost = await tx.post.update({
+      where: { id },
+      data: {
+        status,
+        publishedAt:
+          status === PostStatus.PUBLISHED
+            ? (post.publishedAt ?? new Date())
+            : post.publishedAt,
+        ...(reviewResult
+          ? {
+              qualityScore: reviewResult.qualityScore,
+              reviewStatus: reviewResult.status,
+              reviewRiskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+              reviewedAt: reviewResult.aiFailed ? null : new Date(),
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        status: true,
+        publishedAt: true,
+        updatedAt: true,
+        qualityScore: true,
+        reviewStatus: true,
+        reviewRiskLevel: true,
+      },
+    });
+
+    if (reviewResult) {
+      await tx.reviewRecord.create({
+        data: {
+          postId: id,
+          userId: result.user.id,
+          reviewType: "UPDATE",
+          contentHash: reviewResult.contentHash,
+          passed: reviewResult.safety.passed,
+          riskLevel: toPrismaReviewRiskLevel(reviewResult.safety.riskLevel),
+          categories: reviewResult.safety.categories,
+          qualityScore: reviewResult.qualityScore,
+          result: buildReviewRecordResult(reviewResult),
+        },
+      });
+    }
+
+    return updatedPost;
   });
 
-  return NextResponse.json({ post: updated });
+  return NextResponse.json({ post: updated, reviewResult });
 }
 
 export async function DELETE(

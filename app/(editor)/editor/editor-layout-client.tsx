@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import {
+  AlertTriangle,
   Bot,
   ChevronLeft,
-  ExternalLink,
   FileEdit,
   ImageIcon,
   Library,
@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { AiAssistantPanel } from "@/components/editor/AiAssistantPanel";
 import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
@@ -26,7 +26,8 @@ import {
   EditorProvider,
   useEditorContext,
 } from "@/components/editor/editor-context";
-import { clearLocalDraft } from "@/lib/draft-idb";
+import { clearLocalDraft, clearNewDraftLocal } from "@/lib/draft-idb";
+import { getDraftStorageKey } from "@/lib/draft-sync";
 import { fetchEditorPrompt } from "@/lib/editor/prompts-api";
 import { getEditorBackTarget, EDITOR_FROM_PARAM } from "@/lib/editor/back-navigation";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ function EditorDraftPanelTrigger() {
   const { editorMode } = useEditorContext();
   const [isOpen, setIsOpen] = useState(false);
 
-  if (editorMode === "post") {
+  if (editorMode === "edit") {
     return null;
   }
 
@@ -77,6 +78,156 @@ function EditorDraftPanelTrigger() {
   );
 }
 
+type ReviewResultPayload = {
+  status: "PENDING" | "PASSED" | "REJECTED";
+  safety: {
+    passed: boolean;
+    riskLevel: "high" | "medium" | "low" | "none";
+    categories: string[];
+    reason: string;
+    suggestion: string;
+  };
+  qualityScore: number | null;
+};
+
+type PublishReviewDialogState = {
+  type: "blocked";
+  reviewResult: ReviewResultPayload;
+};
+
+const REVIEW_CATEGORY_LABELS: Record<string, string> = {
+  pornography: "涉黄",
+  gambling: "涉赌",
+  drugs: "涉毒",
+  political_sensitive: "政治敏感",
+  harassment: "人身攻击",
+  vulgar: "低俗内容",
+  misinformation: "虚假信息",
+};
+
+async function parsePublishError(response: Response) {
+  return (await response.json().catch(() => null)) as {
+    error?: string;
+    reviewResult?: ReviewResultPayload;
+  } | null;
+}
+
+function ReviewBlockedDialog({
+  reviewResult,
+  isFixing,
+  isBusy,
+  onClose,
+  onFix,
+}: {
+  reviewResult: ReviewResultPayload;
+  isFixing: boolean;
+  isBusy: boolean;
+  onClose: () => void;
+  onFix: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/30 px-4">
+      <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-zinc-950">
+              内容审核未通过
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {reviewResult.safety.reason}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {reviewResult.safety.categories.map((category) => (
+                <span
+                  className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600"
+                  key={category}
+                >
+                  {REVIEW_CATEGORY_LABELS[category] ?? category}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-xs leading-5 text-zinc-500">
+              {reviewResult.safety.suggestion}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button
+            className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            disabled={isFixing || isBusy}
+            onClick={onClose}
+            type="button"
+          >
+            修改内容
+          </button>
+          <button
+            className="rounded-xl border border-brand-border bg-white px-4 py-2 text-sm font-medium text-brand-primary transition hover:bg-brand-soft"
+            disabled={isFixing || isBusy}
+            onClick={onFix}
+            type="button"
+          >
+            {isFixing ? "生成中…" : "一键生成合规版本"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useCompliantRewrite() {
+  const { editor, title, setTitle, getEditorContent, showNoticeBanner } =
+    useEditorContext();
+  const [isFixing, setIsFixing] = useState(false);
+
+  const generate = useCallback(
+    async (reviewResult: ReviewResultPayload) => {
+      if (!editor) return;
+      setIsFixing(true);
+      try {
+        const response = await fetch("/api/review/fix", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: title.trim(),
+            content: getEditorContent(),
+            reason: reviewResult.safety.reason,
+            categories: reviewResult.safety.categories,
+          }),
+          credentials: "same-origin",
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          showNoticeBanner(payload?.error ?? "合规版本生成失败，请稍后重试");
+          return false;
+        }
+
+        const data = (await response.json()) as {
+          fixed: { title: string; content: string };
+        };
+        setTitle(data.fixed.title);
+        editor.commands.setContent(data.fixed.content);
+        showNoticeBanner("已生成合规版本，请检查后再发布");
+        return true;
+      } catch {
+        showNoticeBanner("合规版本生成失败，请稍后重试");
+        return false;
+      } finally {
+        setIsFixing(false);
+      }
+    },
+    [editor, getEditorContent, setTitle, showNoticeBanner, title]
+  );
+
+  return { isFixing, generate };
+}
+
 function EditorPublishButton() {
   const {
     editorMode,
@@ -93,11 +244,14 @@ function EditorPublishButton() {
   } = useEditorContext();
   const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [reviewDialog, setReviewDialog] =
+    useState<PublishReviewDialogState | null>(null);
+  const { isFixing, generate: generateCompliant } = useCompliantRewrite();
 
   const isSaving = saveStatus === "saving";
   const isBusy = isPublishing || isSaving || isUploadingImage;
 
-  const handlePublish = useCallback(async () => {
+  const publishCurrentContent = useCallback(async () => {
     const trimmedTitle = title.trim();
     const content = getEditorContent();
     const plainText = content.replace(/<[^>]*>/g, "").trim();
@@ -132,17 +286,26 @@ function EditorPublishButton() {
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
+        const payload = await parsePublishError(response);
+        if (payload?.reviewResult?.status === "REJECTED") {
+          setReviewDialog({
+            type: "blocked",
+            reviewResult: payload.reviewResult,
+          });
+          return;
+        }
         showNoticeBanner(payload?.error ?? "发布失败，请稍后重试");
         return;
       }
 
-      const data = (await response.json()) as { post: { id: string } };
-      await clearLocalDraft(userId);
-      showNoticeBanner("发布成功");
-      router.push(`/posts/${data.post.id}`);
+      const data = (await response.json()) as {
+        post: { id: string };
+        reviewResult?: ReviewResultPayload;
+      };
+      await clearNewDraftLocal(userId);
+      const publishedFlag =
+        data.reviewResult?.status === "PENDING" ? "pending" : "success";
+      router.push(`/posts/${data.post.id}?published=${publishedFlag}`);
     } catch {
       showNoticeBanner("发布失败，请稍后重试");
     } finally {
@@ -159,33 +322,146 @@ function EditorPublishButton() {
     title,
   ]);
 
-  if (editorMode === "post" && postId) {
-    return (
-      <Link className={btnEditorHeaderGhost} href={`/posts/${postId}`}>
-        <ExternalLink className="h-4 w-4" />
-        查看文章
-      </Link>
-    );
+  if (editorMode === "edit" && postId) {
+    return null;
   }
 
   return (
-    <button
-      className={cn(btnEditorHeaderGhost, btnEditorHeaderGhostDisabled)}
-      disabled={isBusy}
-      onClick={() => void handlePublish()}
-      type="button"
-    >
-      <Send className="h-4 w-4" />
-      {isPublishing ? "发布中…" : "发布文章"}
-    </button>
+    <>
+      <button
+        className={cn(btnEditorHeaderGhost, btnEditorHeaderGhostDisabled)}
+        disabled={isBusy}
+        onClick={() => void publishCurrentContent()}
+        type="button"
+      >
+        <Send className="h-4 w-4" />
+        {isPublishing ? "正在审核内容…" : "发布文章"}
+      </button>
+
+      {reviewDialog ? (
+        <ReviewBlockedDialog
+          isBusy={isBusy}
+          isFixing={isFixing}
+          onClose={() => setReviewDialog(null)}
+          onFix={() => {
+            void generateCompliant(reviewDialog.reviewResult).then((ok) => {
+              if (ok) setReviewDialog(null);
+            });
+          }}
+          reviewResult={reviewDialog.reviewResult}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function EditorPublishUpdateButton() {
+  const {
+    postId,
+    editorMode,
+    draftId,
+    userId,
+    saveDraft,
+    showNoticeBanner,
+    saveStatus,
+    isUploadingImage,
+  } = useEditorContext();
+  const router = useRouter();
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [reviewDialog, setReviewDialog] =
+    useState<PublishReviewDialogState | null>(null);
+  const { isFixing, generate: generateCompliant } = useCompliantRewrite();
+
+  const isSaving = saveStatus === "saving";
+  const isBusy = isPublishing || isSaving || isUploadingImage;
+
+  const handlePublishUpdate = useCallback(async () => {
+    if (!postId) return;
+
+    setIsPublishing(true);
+    try {
+      const saveResult = await saveDraft();
+      if (!saveResult.ok && saveResult.reason !== "offline") {
+        if (saveResult.reason !== "saving") {
+          showNoticeBanner(saveResult.message ?? "保存失败，请稍后重试", "error");
+        }
+        return;
+      }
+
+      const response = await fetch(`/api/posts/${postId}/publish-update`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        reviewResult?: ReviewResultPayload;
+      } | null;
+
+      if (!response.ok) {
+        if (payload?.reviewResult?.status === "REJECTED") {
+          setReviewDialog({
+            type: "blocked",
+            reviewResult: payload.reviewResult,
+          });
+          return;
+        }
+        showNoticeBanner(payload?.error ?? "更新发布失败，请稍后重试", "error");
+        return;
+      }
+
+      const status = payload?.reviewResult?.status;
+      const flag = status === "PENDING" ? "pending" : "reviewed";
+      if (draftId) {
+        await clearLocalDraft(getDraftStorageKey(userId, draftId));
+      }
+      router.push(`/posts/${postId}?published=${flag}`);
+    } catch {
+      showNoticeBanner("更新发布失败，请稍后重试", "error");
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [postId, draftId, userId, saveDraft, showNoticeBanner, router]);
+
+  if (editorMode !== "edit" || !postId) {
+    return null;
+  }
+
+  return (
+    <>
+      <button
+        className={cn(btnEditorHeaderGhost, btnEditorHeaderGhostDisabled)}
+        disabled={isBusy}
+        onClick={() => void handlePublishUpdate()}
+        type="button"
+      >
+        <Send className="h-4 w-4" />
+        {isPublishing ? "正在审核…" : "更新发布"}
+      </button>
+
+      {reviewDialog ? (
+        <ReviewBlockedDialog
+          isBusy={isBusy}
+          isFixing={isFixing}
+          onClose={() => setReviewDialog(null)}
+          onFix={() => {
+            void generateCompliant(reviewDialog.reviewResult).then((ok) => {
+              if (ok) setReviewDialog(null);
+            });
+          }}
+          reviewResult={reviewDialog.reviewResult}
+        />
+      ) : null}
+    </>
   );
 }
 
 function EditorManualSaveButton() {
-  const { saveDraft, saveStatus, showNoticeBanner, isUploadingImage } =
+  const { editorMode, saveDraft, saveStatus, showNoticeBanner, isUploadingImage } =
     useEditorContext();
   const isSaving = saveStatus === "saving";
   const isBusy = isSaving || isUploadingImage;
+  const isEditMode = editorMode === "edit";
 
   const handleSave = useCallback(async () => {
     const result = await saveDraft();
@@ -195,8 +471,15 @@ function EditorManualSaveButton() {
       }
       return;
     }
-    showNoticeBanner(result.skipped ? "内容已是最新" : "保存成功");
-  }, [saveDraft, showNoticeBanner]);
+    const savedMessage = isEditMode
+      ? result.skipped
+        ? "编辑内容已是最新"
+        : "编辑已保存，尚未发布"
+      : result.skipped
+        ? "内容已是最新"
+        : "保存成功";
+    showNoticeBanner(savedMessage);
+  }, [isEditMode, saveDraft, showNoticeBanner]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -239,18 +522,19 @@ function EditorSaveStatusIndicator() {
             ? "bg-red-500"
             : "bg-zinc-300";
 
-  let label = editorMode === "post" ? "文章未保存" : "草稿未保存";
+  let label = editorMode === "edit" ? "编辑未保存" : "草稿未保存";
   if (effectiveStatus === "saving") {
     label = "保存中…";
   } else if (effectiveStatus === "offline") {
     label = "离线中，内容已本地保存";
   } else if (effectiveStatus === "saved") {
+    const savedPrefix = editorMode === "edit" ? "已保存" : "已自动保存";
     label = lastSavedAt
-      ? `已自动保存 · ${lastSavedAt.toLocaleTimeString("zh-CN", {
+      ? `${savedPrefix} · ${lastSavedAt.toLocaleTimeString("zh-CN", {
           hour: "2-digit",
           minute: "2-digit",
         })}`
-      : "已自动保存";
+      : savedPrefix;
   } else if (effectiveStatus === "error") {
     label = "保存失败，重试中…";
   }
@@ -272,7 +556,7 @@ function EditorNoticeBanner() {
     }
     const timer = window.setTimeout(() => {
       dismissNoticeBanner();
-    }, 3000);
+    }, 6000);
     return () => {
       window.clearTimeout(timer);
     };
@@ -282,15 +566,27 @@ function EditorNoticeBanner() {
     return null;
   }
 
+  const isError = noticeBanner.tone === "error";
+
   return (
     <div
       aria-live="polite"
-      className="flex shrink-0 items-center justify-between gap-3 border-b border-emerald-100 bg-emerald-50/70 px-5 py-2 text-sm text-emerald-700"
+      className={cn(
+        "flex shrink-0 items-center justify-between gap-3 border-b px-5 py-2 text-sm",
+        isError
+          ? "border-red-100 bg-red-50/70 text-red-700"
+          : "border-emerald-100 bg-emerald-50/70 text-emerald-700"
+      )}
     >
-      <span>{noticeBanner}</span>
+      <span>{noticeBanner.message}</span>
       <button
         aria-label="关闭提示"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-full text-emerald-600 transition hover:bg-emerald-100"
+        className={cn(
+          "inline-flex h-6 w-6 items-center justify-center rounded-full transition",
+          isError
+            ? "text-red-600 hover:bg-red-100"
+            : "text-emerald-600 hover:bg-emerald-100"
+        )}
         onClick={dismissNoticeBanner}
         type="button"
       >
@@ -313,10 +609,21 @@ type EditorLayoutClientProps = {
   children: ReactNode;
 };
 
-export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps) {
+/** 从路由解析文章 ID；layout 层 useParams 在首次渲染时可能尚未包含子段 [id]。 */
+function useEditorPostId() {
   const params = useParams();
+  const pathname = usePathname();
+  const fromParams = typeof params?.id === "string" ? params.id : null;
+  if (fromParams) {
+    return fromParams;
+  }
+  const match = pathname?.match(/^\/editor\/([^/?#]+)/);
+  return match?.[1] ?? null;
+}
+
+export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps) {
   const searchParams = useSearchParams();
-  const postId = typeof params?.id === "string" ? params.id : null;
+  const postId = useEditorPostId();
   const initialDraftId = searchParams.get("draftId");
   const promptIdParam = searchParams.get("promptId");
   const [instructionKeyword, setInstructionKeyword] = useState("");
@@ -373,6 +680,7 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
             <EditorTagsButton />
             <EditorManualSaveButton />
             <EditorPublishButton />
+            <EditorPublishUpdateButton />
           </div>
         </header>
         <EditorNoticeBanner />

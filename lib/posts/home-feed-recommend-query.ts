@@ -10,7 +10,7 @@ import {
 } from "@/lib/posts/home-cursor";
 import type { FetchHomeFeedPageOptions, HomeFeedListItem } from "@/lib/posts/home-feed-query";
 import { HOME_TOPIC_TAGS } from "@/lib/posts/home-list";
-import { recommendScoreSql } from "@/lib/posts/home-recommend-score";
+import { recommendScoreSql, RECOMMEND_FORMULA_VERSION } from "@/lib/posts/home-recommend-score";
 import { getLikedPostIds } from "@/lib/posts/metrics";
 import { buildPostHref } from "@/lib/posts/reader-navigation";
 
@@ -24,6 +24,7 @@ type RecommendFeedRow = {
   viewCount: number;
   likeCount: number;
   tags: string[];
+  qualityScore: number | null;
   user_name: string | null;
   user_email: string | null;
   user_phone: string | null;
@@ -41,6 +42,7 @@ function mapRecommendRow(row: RecommendFeedRow) {
     viewCount: row.viewCount,
     likeCount: row.likeCount,
     tags: row.tags,
+    qualityScore: row.qualityScore,
     user: {
       name: row.user_name,
       email: row.user_email,
@@ -57,21 +59,25 @@ function buildTopicTagSql(topic: string | null) {
   return Prisma.sql`AND p.tags && ${tags}::text[]`;
 }
 
-/** 推荐 Tab：按综合分（互动 + 时间衰减）排序并分页。 */
+/** 推荐 Tab：按综合分（互动 + 质量 + 时间衰减）排序并分页。 */
 export async function fetchHomeFeedRecommendPage(
   options: FetchHomeFeedPageOptions,
   limit: number
 ) {
   const decodedCursor = decodeHomeCursor(options.cursor);
-  const scoreAsOf =
-    decodedCursor?.mode === "recommend"
-      ? new Date(decodedCursor.asOf)
-      : new Date();
+  const recommendCursor =
+    decodedCursor?.mode === "recommend" &&
+    decodedCursor.formulaVersion === RECOMMEND_FORMULA_VERSION
+      ? decodedCursor
+      : null;
+  const scoreAsOf = recommendCursor
+    ? new Date(recommendCursor.asOf)
+    : new Date();
   const scoreExpr = recommendScoreSql("p", scoreAsOf);
 
   const cursorFilter =
-    decodedCursor?.mode === "recommend"
-      ? Prisma.sql`AND (s."recommendScore", s.id) < (${decodedCursor.score}::double precision, ${decodedCursor.id})`
+    recommendCursor
+      ? Prisma.sql`AND (s."recommendScore", s.id) < (${recommendCursor.score}::double precision, ${recommendCursor.id})`
       : Prisma.empty;
 
   const excludeUserFilter = options.userId
@@ -90,6 +96,7 @@ export async function fetchHomeFeedRecommendPage(
           p."updatedAt",
           p."viewCount",
           p."likeCount",
+          p."qualityScore",
           p.tags,
           u.name AS user_name,
           u.email AS user_email,
@@ -110,6 +117,7 @@ export async function fetchHomeFeedRecommendPage(
         s."updatedAt",
         s."viewCount",
         s."likeCount",
+        s."qualityScore",
         s.tags,
         s.user_name,
         s.user_email,

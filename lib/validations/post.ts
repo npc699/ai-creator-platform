@@ -36,10 +36,7 @@ export const postPublishSchema = z.object({
 });
 
 export const postUpdateSchema = z.object({
-  title: postTitleSchema,
-  content: postContentSchema,
   promptId: draftIdSchema,
-  tags: postTagsSchema,
 });
 
 /** 详情页上线 / 下线切换 */

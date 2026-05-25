@@ -8,7 +8,8 @@ import { useCallback, useEffect, useState } from "react";
 import { EditorDraftSwitchDialog } from "@/components/editor/editor-draft-switch-dialog";
 import { useEditorContext } from "@/components/editor/editor-context";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { clearLocalDraft, getLocalDraft } from "@/lib/draft-idb";
+import { clearLocalDraft, clearNewDraftLocal, getLocalDraft } from "@/lib/draft-idb";
+import { getDraftStorageKey } from "@/lib/draft-sync";
 import {
   buildEditorHref,
   EDITOR_FROM_PARAM,
@@ -215,9 +216,10 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
 
       setDrafts((previous) => previous.filter((item) => item.id !== draft.id));
 
-      const local = await getLocalDraft(userId);
+      const storageKey = getDraftStorageKey(userId, draft.id);
+      const local = await getLocalDraft(storageKey);
       if (local?.draftId === draft.id) {
-        await clearLocalDraft(userId);
+        await clearLocalDraft(storageKey);
       }
 
       setPendingDeleteDraft(null);

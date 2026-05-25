@@ -11,8 +11,9 @@ type PostArticleHeaderProps = {
   trackViews: boolean;
   viewCount: number;
   likeCount: number;
-  score: number;
+  score: number | null;
   tags: string[];
+  reviewPending?: boolean;
 };
 
 function AuthorAvatar({
@@ -60,6 +61,7 @@ export function PostArticleHeader({
   likeCount,
   score,
   tags,
+  reviewPending,
 }: PostArticleHeaderProps) {
   return (
     <header className="mb-0">
@@ -81,7 +83,7 @@ export function PostArticleHeader({
         </div>
       </div>
 
-      <ArticleMetaBadges className="mt-4" score={score} tags={tags} />
+      <ArticleMetaBadges className="mt-4" reviewPending={reviewPending} score={score} tags={tags} />
 
       <div aria-hidden className="mt-6 border-t border-zinc-200" />
     </header>

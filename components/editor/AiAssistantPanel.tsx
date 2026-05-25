@@ -11,6 +11,7 @@ import type { AiGenerateMode } from "@/lib/ai/schema";
 type QuickAction = {
   label: string;
   mode?: AiGenerateMode;
+  action?: "review";
   disabled?: boolean;
   title?: string;
 };
@@ -20,9 +21,9 @@ const quickActions: QuickAction[] = [
   { label: "扩写选中内容", mode: "expand" },
   { label: "精简压缩", mode: "shrink" },
   {
-    label: "内容审核",
-    disabled: true,
-    title: "内容审核会在后续阶段接入",
+    label: "文章预审核与评分",
+    action: "review",
+    title: "对当前标题和正文进行 AI 预审",
   },
 ];
 
@@ -36,12 +37,17 @@ export function AiAssistantPanel({
   const {
     editor,
     generationError,
+    getEditorContent,
     isGenerating,
     selectedText,
+    showNoticeBanner,
     startGenerate,
     stopGenerate,
+    tags,
+    title,
   } = useEditorContext();
   const [insertMode, setInsertMode] = useState<"replace" | "append">("replace");
+  const [isReviewing, setIsReviewing] = useState(false);
 
   const isEditorReady = Boolean(editor);
   const hasSelection = selectedText.length > 0;
@@ -66,15 +72,68 @@ export function AiAssistantPanel({
     }
   };
 
-  const handleQuickAction = (action: QuickAction) => {
-    if (!action.mode || action.disabled || isGenerating) {
+  const handleQuickAction = async (action: QuickAction) => {
+    if (action.disabled || isGenerating || isReviewing) {
       return;
     }
 
-    void startGenerate({
-      mode: action.mode,
-      insertMode,
-    });
+    if (action.action === "review") {
+      const trimmedTitle = title.trim();
+      const content = getEditorContent();
+      const plainText = content.replace(/<[^>]*>/g, "").trim();
+      if (!trimmedTitle || !plainText) {
+        showNoticeBanner("请先输入标题和正文再审核");
+        return;
+      }
+
+      setIsReviewing(true);
+      try {
+        const response = await fetch("/api/review/content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmedTitle, content, tags }),
+          credentials: "same-origin",
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          error?: string;
+          reviewResult?: {
+            status: "PENDING" | "PASSED" | "REJECTED" | "FLAGGED";
+            safety: { reason: string };
+            qualityScore: number | null;
+          };
+        } | null;
+
+        if (!response.ok || !payload?.reviewResult) {
+          showNoticeBanner(payload?.error ?? "内容审核失败，请稍后重试", "error");
+          return;
+        }
+
+        const { reviewResult } = payload;
+        const scoreText =
+          reviewResult.qualityScore === null
+            ? "质量分待生成"
+            : `质量分 ${reviewResult.qualityScore}`;
+
+        if (reviewResult.status === "REJECTED") {
+          showNoticeBanner(`${reviewResult.safety.reason}，${scoreText}`, "error");
+          return;
+        }
+
+        showNoticeBanner(`${reviewResult.safety.reason}，${scoreText}`);
+      } catch {
+        showNoticeBanner("内容审核失败，请稍后重试", "error");
+      } finally {
+        setIsReviewing(false);
+      }
+      return;
+    }
+
+    if (action.mode) {
+      void startGenerate({
+        mode: action.mode,
+        insertMode,
+      });
+    }
   };
 
   const handleKeywordKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -208,8 +267,11 @@ export function AiAssistantPanel({
         <h2 className="mb-3 text-sm font-medium text-zinc-500">快捷操作</h2>
         <div className="space-y-2">
           {quickActions.map((action) => {
-            const disabled =
-              action.disabled || !isEditorReady || (isGenerating && !action.disabled);
+              const disabled =
+                action.disabled ||
+                !isEditorReady ||
+                isReviewing ||
+                (isGenerating && !action.disabled);
 
             return (
               <button
@@ -221,7 +283,7 @@ export function AiAssistantPanel({
                 )}
                 disabled={disabled}
                 key={action.label}
-                onClick={() => handleQuickAction(action)}
+                onClick={() => void handleQuickAction(action)}
                 onPointerDown={(event) => {
                   // 快捷操作依赖 TipTap 当前选区，点击侧栏按钮时不抢走选区。
                   event.preventDefault();
@@ -230,7 +292,7 @@ export function AiAssistantPanel({
                 type="button"
               >
                 <Sparkles className="h-4 w-4 text-zinc-400" />
-                {action.label}
+                {action.action === "review" && isReviewing ? "审核中…" : action.label}
               </button>
             );
           })}
