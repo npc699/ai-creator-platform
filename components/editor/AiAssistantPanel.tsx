@@ -104,7 +104,10 @@ export function AiAssistantPanel({
         } | null;
 
         if (!response.ok || !payload?.reviewResult) {
-          showNoticeBanner(payload?.error ?? "内容审核失败，请稍后重试", "error");
+          showNoticeBanner(
+            payload?.error ?? "内容审核失败，请稍后重试",
+            "error"
+          );
           return;
         }
 
@@ -115,7 +118,10 @@ export function AiAssistantPanel({
             : `质量分 ${reviewResult.qualityScore}`;
 
         if (reviewResult.status === "REJECTED") {
-          showNoticeBanner(`${reviewResult.safety.reason}，${scoreText}`, "error");
+          showNoticeBanner(
+            `${reviewResult.safety.reason}，${scoreText}`,
+            "error"
+          );
           return;
         }
 
@@ -137,7 +143,11 @@ export function AiAssistantPanel({
   };
 
   const handleKeywordKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
       return;
     }
 
@@ -192,7 +202,9 @@ export function AiAssistantPanel({
         >
           <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5">
             <div className="flex items-center justify-between gap-3 text-xs text-zinc-500">
-              <span>已选中 {selectedText.length} 字，可按写作指令处理这段内容</span>
+              <span>
+                已选中 {selectedText.length} 字，可按写作指令处理这段内容
+              </span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {[
@@ -239,7 +251,9 @@ export function AiAssistantPanel({
             isGenerating
               ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
               : "border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50",
-            !isEditorReady && !isGenerating ? "cursor-not-allowed opacity-60" : null
+            !isEditorReady && !isGenerating
+              ? "cursor-not-allowed opacity-60"
+              : null
           )}
           disabled={!isEditorReady && !isGenerating}
           onClick={handleGenerate}
@@ -267,11 +281,11 @@ export function AiAssistantPanel({
         <h2 className="mb-3 text-sm font-medium text-zinc-500">快捷操作</h2>
         <div className="space-y-2">
           {quickActions.map((action) => {
-              const disabled =
-                action.disabled ||
-                !isEditorReady ||
-                isReviewing ||
-                (isGenerating && !action.disabled);
+            const disabled =
+              action.disabled ||
+              !isEditorReady ||
+              isReviewing ||
+              (isGenerating && !action.disabled);
 
             return (
               <button
@@ -292,13 +306,16 @@ export function AiAssistantPanel({
                 type="button"
               >
                 <Sparkles className="h-4 w-4 text-zinc-400" />
-                {action.action === "review" && isReviewing ? "审核中…" : action.label}
+                {action.action === "review" && isReviewing
+                  ? "审核中…"
+                  : action.label}
               </button>
             );
           })}
         </div>
         <p className="mt-3 text-xs leading-5 text-zinc-400">
-          润色、扩写和精简会使用当前选中内容，并遵循上方的替换 / 追加设置；未选中时会提示选择文本。
+          润色、扩写和精简会使用当前选中内容，并遵循上方的替换 /
+          追加设置；未选中时会提示选择文本。
         </p>
       </section>
     </div>
