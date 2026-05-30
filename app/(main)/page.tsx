@@ -40,7 +40,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <FeedPageLayout>
-      <FeedPanel>
+      <FeedPanel channel={channel}>
         {items.length === 0 ? (
           <FeedEmptyState
             actionHref="/editor"

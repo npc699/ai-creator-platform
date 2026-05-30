@@ -45,11 +45,10 @@ export const navSidebarActive = [
 /** 标签、统计块等表面 */
 export const surfaceSoft = [bgBrandSurface, "text-brand-on-surface"].join(" ");
 
-/** 文章质量分徽章：品牌蓝底，与标签徽章形态一致。 */
+/** @deprecated 请使用 getQualityScoreBadgeClass(score)，按档位返回配色。 */
 export const badgeArticleScore = [
   "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-medium",
-  bgBrandSurface,
-  "text-brand-on-surface ring-1 ring-inset ring-brand-border",
+  "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200",
 ].join(" ");
 
 /** 文章关键字标签徽章：灰色变体，与质量分同形态。 */

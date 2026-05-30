@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, content, promptId } = parsed.data;
+  const { title, content, promptId, tags, coverUrl } = parsed.data;
 
   const promptError = await assertOwnedPromptId(user.id, promptId);
   if (promptError) {
@@ -67,6 +67,8 @@ export async function POST(request: Request) {
       title,
       content,
       promptId: promptId ?? null,
+      ...(tags !== undefined ? { tags } : {}),
+      coverUrl: coverUrl ?? null,
     },
     select: {
       id: true,

@@ -21,11 +21,27 @@ import type { AiImageSize } from "@/lib/ai/image-schema";
 
 type InsertImageDialogProps = {
   onClose: () => void;
+  /** 自定义确认；未传时默认插入编辑器正文。 */
+  onConfirm?: (url: string) => void;
+  title?: string;
+  confirmLabel?: string;
+  embedTip?: string;
+  /** 封面等场景不依赖编辑器实例。 */
+  requireEditor?: boolean;
+  onUploadingChange?: (uploading: boolean) => void;
 };
 
 type InsertImageTab = "local" | "ai";
 
-export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
+export function InsertImageDialog({
+  onClose,
+  onConfirm,
+  title,
+  confirmLabel,
+  embedTip,
+  requireEditor = true,
+  onUploadingChange,
+}: InsertImageDialogProps) {
   const { editor, insertImage } = useEditorContext();
   const { error, generateImage, isGenerating, reset, stopGenerate } = useAiImageGenerate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36,13 +52,30 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
   const [localError, setLocalError] = useState<string | null>(null);
   const [isUploadingLocal, setIsUploadingLocal] = useState(false);
 
-  const isEditorReady = Boolean(editor);
+  const isEditorReady = requireEditor ? Boolean(editor) : true;
+  const dialogTitle = title ?? insertImageCopy.title;
+  const dialogConfirmLabel = confirmLabel ?? assetLibraryCopy.insertToEditor;
+  const dialogEmbedTip = embedTip ?? insertImageCopy.embedTip;
   const showPromptPlaceholder = aiPrompt.length === 0;
   const maxFileSizeLabel = formatLocalImageSize(LOCAL_IMAGE_MAX_BYTES);
 
   const handleClose = () => {
     stopGenerate();
     onClose();
+  };
+
+  const handleConfirmUrl = (url: string) => {
+    if (onConfirm) {
+      onConfirm(url);
+      handleClose();
+      return;
+    }
+
+    if (!insertImage(url)) {
+      return;
+    }
+
+    handleClose();
   };
 
   const handlePickLocalImage = () => {
@@ -63,10 +96,17 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
     }
 
     setIsUploadingLocal(true);
+    onUploadingChange?.(true);
     setLocalError(null);
 
     try {
       const uploaded = await uploadEditorImage(file);
+
+      if (onConfirm) {
+        onConfirm(uploaded.url);
+        handleClose();
+        return;
+      }
 
       if (!insertImage(uploaded.url, file.name)) {
         setLocalError(assetLibraryCopy.uploadEditorNotReady);
@@ -80,6 +120,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
       );
     } finally {
       setIsUploadingLocal(false);
+      onUploadingChange?.(false);
     }
   };
 
@@ -116,11 +157,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
       return;
     }
 
-    if (!insertImage(previewUrl)) {
-      return;
-    }
-
-    handleClose();
+    handleConfirmUrl(previewUrl);
   };
 
   const handleAiPromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -153,7 +190,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
       >
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-zinc-900" id="insert-image-title">
-            {insertImageCopy.title}
+            {dialogTitle}
           </h2>
           <button
             aria-label={insertImageCopy.close}
@@ -224,7 +261,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
             {localError ? (
               <p className="text-xs leading-5 text-red-600">{localError}</p>
             ) : null}
-            <p className="text-xs leading-5 text-zinc-400">{insertImageCopy.embedTip}</p>
+            <p className="text-xs leading-5 text-zinc-400">{dialogEmbedTip}</p>
           </div>
         ) : (
           <div className="mt-4 space-y-3">
@@ -322,7 +359,7 @@ export function InsertImageDialog({ onClose }: InsertImageDialogProps) {
                   onClick={handleInsertPreview}
                   type="button"
                 >
-                  {assetLibraryCopy.insertToEditor}
+                  {dialogConfirmLabel}
                 </button>
               </div>
             ) : null}

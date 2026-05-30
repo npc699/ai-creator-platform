@@ -2,6 +2,8 @@
 export type FeedArticleItem = {
   id: string;
   author: string;
+  authorId: string;
+  authorImage?: string | null;
   time: string;
   title: string;
   excerpt: string;
@@ -14,7 +16,6 @@ export type FeedArticleItem = {
   views: number;
   likes: number;
   href?: string;
-  singleLineExcerpt?: boolean;
   /** 已发布列表专用：上线 / 下线状态标签 */
   publishStatus?: "online" | "offline";
   /** 为 true 时点赞走 API 持久化（已发布列表）；首页 mock 为 false */
@@ -23,6 +24,14 @@ export type FeedArticleItem = {
   likedByViewer?: boolean;
   /** 是否允许点赞（需登录） */
   canLike?: boolean;
+  /** 列表封面图 URL（用户于编辑器单独设置） */
+  coverUrl?: string | null;
+  /** 热点榜全局排名（从 1 起） */
+  rank?: number;
+  /** 热点榜：发布 48h 内且排名前 10 */
+  isRisingFast?: boolean;
+  /** 爆文榜：持续热门天数，≥2 时展示 */
+  sustainedHotDays?: number | null;
 };
 
 export type FeedScope = "home";

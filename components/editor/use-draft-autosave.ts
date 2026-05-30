@@ -26,6 +26,7 @@ type UseDraftAutosaveParams = {
   userId: string;
   title: string;
   tags: string[];
+  coverUrl: string | null;
   // 用 getter 拉取正文，避免把高频变化的 HTML 提升为 React state 导致整棵编辑器树重渲染。
   getContent: () => string;
   draftId: string | null;
@@ -53,7 +54,7 @@ type RunSaveOptions = {
 
 export type UseDraftAutosaveResult = {
   /** EditorProvider hydrate 完成后用真实落库内容初始化 baseline，避免再次保存。 */
-  seedSavedSnapshot: (title: string, content: string, tags?: string[]) => void;
+  seedSavedSnapshot: (title: string, content: string, tags?: string[], coverUrl?: string | null) => void;
   /** 立即保存草稿（供顶部按钮、Ctrl+S 调用）。 */
   saveDraft: (options?: RunSaveOptions) => Promise<SaveDraftResult>;
   /** 联网后对比时间戳并上传 pending 本地草稿。 */
@@ -95,6 +96,7 @@ export function useDraftAutosave({
   userId,
   title,
   tags,
+  coverUrl,
   getContent,
   draftId,
   isOnline,
@@ -106,6 +108,7 @@ export function useDraftAutosave({
   const userIdRef = useRef(userId);
   const titleRef = useRef(title);
   const tagsRef = useRef(tags);
+  const coverUrlRef = useRef(coverUrl);
   const getContentRef = useRef(getContent);
   const draftIdRef = useRef<string | null>(draftId);
   const isOnlineRef = useRef(isOnline);
@@ -117,6 +120,7 @@ export function useDraftAutosave({
   const lastSavedTitleRef = useRef<string | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
   const lastSavedTagsRef = useRef<string[] | null>(null);
+  const lastSavedCoverUrlRef = useRef<string | null | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
   const localDebounceRef = useRef<number | null>(null);
   const onCreatedRef = useRef(onCreated);
@@ -126,6 +130,7 @@ export function useDraftAutosave({
     userIdRef.current = userId;
     titleRef.current = title;
     tagsRef.current = tags;
+    coverUrlRef.current = coverUrl;
     getContentRef.current = getContent;
     draftIdRef.current = draftId;
     isOnlineRef.current = isOnline;
@@ -136,10 +141,16 @@ export function useDraftAutosave({
   });
 
   const seedSavedSnapshot = useCallback(
-    (titleVal: string, contentVal: string, tagsVal: string[] = []) => {
+    (
+      titleVal: string,
+      contentVal: string,
+      tagsVal: string[] = [],
+      coverVal: string | null = null
+    ) => {
       lastSavedTitleRef.current = titleVal;
       lastSavedContentRef.current = contentVal;
       lastSavedTagsRef.current = [...tagsVal];
+      lastSavedCoverUrlRef.current = coverVal;
     },
     []
   );
@@ -179,6 +190,7 @@ export function useDraftAutosave({
         title: nextTitle,
         content: nextContent,
         tags: [...tagsRef.current],
+        coverUrl: coverUrlRef.current,
         localUpdatedAt: now,
         cloudUpdatedAt,
         pendingSync: options?.pendingSync ?? true,
@@ -221,6 +233,7 @@ export function useDraftAutosave({
           title: nextTitle,
           content: nextContent,
           tags: tagsRef.current,
+          coverUrl: coverUrlRef.current,
         }),
         signal,
         credentials: "same-origin",
@@ -266,10 +279,12 @@ export function useDraftAutosave({
       }
 
       const nextTags = tagsRef.current;
+      const nextCoverUrl = coverUrlRef.current;
       const isClean =
         lastSavedTitleRef.current === nextTitle &&
         lastSavedContentRef.current === nextContent &&
-        JSON.stringify(lastSavedTagsRef.current) === JSON.stringify(nextTags);
+        JSON.stringify(lastSavedTagsRef.current) === JSON.stringify(nextTags) &&
+        lastSavedCoverUrlRef.current === nextCoverUrl;
       if (isClean && !options?.skipCleanCheck) {
         return { ok: true, skipped: true, draftId: draftIdRef.current };
       }
@@ -306,6 +321,7 @@ export function useDraftAutosave({
         lastSavedTitleRef.current = nextTitle;
         lastSavedContentRef.current = nextContent;
         lastSavedTagsRef.current = [...nextTags];
+        lastSavedCoverUrlRef.current = nextCoverUrl;
 
         await persistLocalDraft({
           pendingSync: false,
@@ -399,12 +415,19 @@ export function useDraftAutosave({
           if (local.tags) {
             lastSavedTagsRef.current = [...local.tags];
           }
+          if (local.coverUrl !== undefined) {
+            coverUrlRef.current = local.coverUrl ?? null;
+            lastSavedCoverUrlRef.current = local.coverUrl ?? null;
+          }
           onStatusRef.current("saved", new Date(cloud.updatedAt));
         }
         return;
       }
 
       onStatusRef.current("saving", null);
+      if (local.coverUrl !== undefined) {
+        coverUrlRef.current = local.coverUrl ?? null;
+      }
       const saved = await uploadToCloud(local.title, local.content);
 
       if (!draftIdRef.current) {
@@ -416,6 +439,9 @@ export function useDraftAutosave({
       lastSavedContentRef.current = local.content;
       if (local.tags) {
         lastSavedTagsRef.current = [...local.tags];
+      }
+      if (local.coverUrl !== undefined) {
+        lastSavedCoverUrlRef.current = local.coverUrl ?? null;
       }
 
       await persistLocalDraft({
@@ -462,7 +488,8 @@ export function useDraftAutosave({
     return (
       lastSavedTitleRef.current !== nextTitle ||
       lastSavedContentRef.current !== nextContent ||
-      JSON.stringify(lastSavedTagsRef.current) !== JSON.stringify(tagsRef.current)
+      JSON.stringify(lastSavedTagsRef.current) !== JSON.stringify(tagsRef.current) ||
+      lastSavedCoverUrlRef.current !== coverUrlRef.current
     );
   }, []);
 
@@ -471,7 +498,7 @@ export function useDraftAutosave({
       return;
     }
     scheduleLocalPersist();
-  }, [enabled, tags, title, scheduleLocalPersist]);
+  }, [enabled, tags, title, coverUrl, scheduleLocalPersist]);
 
   useEffect(() => {
     if (!enabled) {

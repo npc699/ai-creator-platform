@@ -5,6 +5,7 @@ export type CloudDraftSnapshot = {
   content: string;
   updatedAt: string;
   tags?: string[];
+  coverUrl?: string | null;
 };
 
 /** 本地草稿存储键：有 draftId 时按稿隔离，新建稿仍用 user 维度。 */
@@ -23,6 +24,8 @@ export type LocalDraftRecord = {
   content: string;
   /** 发布前暂存的标签。 */
   tags?: string[];
+  /** 列表封面图 URL，独立于正文。 */
+  coverUrl?: string | null;
   /** 最后一次本地写入时间（ISO）。 */
   localUpdatedAt: string;
   /** 最后一次云端成功保存时间；尚未落云时为 null。 */
@@ -111,6 +114,8 @@ export function pickDraftOnLoad(
         draftId: cloud.id,
         title: cloud.title,
         content: cloud.content,
+        tags: cloud.tags,
+        coverUrl: cloud.coverUrl ?? null,
         localUpdatedAt: cloud.updatedAt,
         cloudUpdatedAt: cloud.updatedAt,
         pendingSync: false,
@@ -165,6 +170,7 @@ export function pickDraftOnLoad(
         title: cloud.title,
         content: cloud.content,
         tags: cloud.tags,
+        coverUrl: cloud.coverUrl ?? null,
         localUpdatedAt: cloud.updatedAt,
         cloudUpdatedAt: cloud.updatedAt,
         pendingSync: false,

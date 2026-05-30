@@ -74,7 +74,7 @@ export function DraftArticleList({ items, userId }: DraftArticleListProps) {
 
   return (
     <>
-      <div className="space-y-4 p-4">
+      <div className="px-5 py-2">
         {items.map(({ id, title, ...item }) => (
           <FeedArticleCard
             key={id}

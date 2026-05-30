@@ -34,6 +34,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
           email={user.email}
           isAdmin={isAdmin}
           phone={user.phone}
+          userId={user.id}
         />
         <div className="mx-auto flex w-full max-w-[1440px] flex-1 min-h-0 items-stretch gap-4 px-4 pb-6 pt-4 lg:px-6">
           <AppSidebar />

@@ -1,5 +1,6 @@
 import { formatFeedScoreLabel } from "@/lib/feed/format-score";
-import { badgeArticleScore, badgeArticleTag } from "@/lib/utils/brand";
+import { getQualityScoreBadgeClass, getQualityTierMeta } from "@/lib/feed/quality-tier";
+import { badgeArticleTag } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type ArticleMetaBadgesProps = {
@@ -14,7 +15,7 @@ const badgeReviewWarning = [
   "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200",
 ].join(" ");
 
-/** 质量分（蓝）/ 待审核（橙）+ 标签（灰）横排展示。 */
+/** 质量分（按档位配色）/ 待审核（橙）+ 标签（灰）横排展示。 */
 export function ArticleMetaBadges({
   score,
   tags = [],
@@ -25,10 +26,17 @@ export function ArticleMetaBadges({
     return null;
   }
 
+  const scoreTierMeta = score !== null ? getQualityTierMeta(score) : null;
+
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       {score !== null ? (
-        <span className={badgeArticleScore}>{formatFeedScoreLabel(score)}</span>
+        <span
+          className={getQualityScoreBadgeClass(score)}
+          title={`${scoreTierMeta?.label ?? ""}（${score} 分）`}
+        >
+          {formatFeedScoreLabel(score)}
+        </span>
       ) : null}
       {reviewPending ? (
         <span className={badgeReviewWarning}>待审核</span>

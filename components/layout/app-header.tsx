@@ -1,10 +1,11 @@
-import { Bell, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { UserMenu } from "@/components/layout/user-menu";
 import { headerBadge } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type AppHeaderProps = {
+  userId: string;
   displayName: string;
   email?: string | null;
   phone?: string | null;
@@ -12,6 +13,7 @@ type AppHeaderProps = {
 };
 
 export function AppHeader({
+  userId,
   displayName,
   email,
   phone,
@@ -45,19 +47,13 @@ export function AppHeader({
           </label>
         </div>
 
-        <div className="relative z-10 ml-auto flex shrink-0 items-center gap-3">
-          <button
-            aria-label="通知"
-            className="rounded-full border border-zinc-200 bg-white p-2 text-zinc-600 transition hover:bg-zinc-50"
-            type="button"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
+        <div className="relative z-10 ml-auto flex shrink-0 items-center">
           <UserMenu
             displayName={displayName}
             email={email}
             isAdmin={isAdmin}
             phone={phone}
+            userId={userId}
           />
         </div>
       </div>

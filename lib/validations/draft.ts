@@ -1,3 +1,4 @@
+import { coverUrlSchema } from "@/lib/validations/cover-url";
 import { z } from "zod";
 
 // 标题入库默认值：用户允许留空，但 Prisma 字段是 NOT NULL，所以服务端兜底。
@@ -35,6 +36,7 @@ export const draftCreateSchema = z.object({
   content: contentSchema,
   promptId: promptIdSchema,
   tags: draftTagsSchema,
+  coverUrl: coverUrlSchema,
 });
 
 export const draftUpdateSchema = z.object({
@@ -42,6 +44,7 @@ export const draftUpdateSchema = z.object({
   content: contentSchema,
   promptId: promptIdSchema,
   tags: draftTagsSchema,
+  coverUrl: coverUrlSchema,
 });
 
 export type DraftCreateInput = z.infer<typeof draftCreateSchema>;

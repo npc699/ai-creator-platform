@@ -47,6 +47,7 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
           viewCount: true,
           likeCount: true,
           tags: true,
+          coverUrl: true,
           qualityScore: true,
           reviewStatus: true,
           prompt: {
@@ -64,7 +65,10 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
       )
     : new Set<string>();
   const feedItems = posts.map((post) => ({
-    ...mapPublishedPostToFeedItem(post, authorLabel),
+    ...mapPublishedPostToFeedItem(post, authorLabel, {
+      id: user!.id,
+      image: user!.image,
+    }),
     href: buildPostHref(post.id, publishedReturnPath),
     likedByViewer: likedPostIds.has(post.id),
     canLike: Boolean(user),

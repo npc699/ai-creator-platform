@@ -34,6 +34,7 @@ export async function GET(
     title: draft.title,
     content: draft.content,
     tags: draft.tags,
+    coverUrl: draft.coverUrl,
     promptId: draft.promptId,
     updatedAt: draft.updatedAt,
   });

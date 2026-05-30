@@ -4,6 +4,11 @@ import { randomUUID } from "node:crypto";
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  buildUploadPublicUrl as buildPublicUrl,
+  isLocalUploadUrl,
+} from "@/lib/assets/public-url";
+
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -34,12 +39,10 @@ function normalizeExtension(mimeType: string, filename: string) {
 
 /** 本站上传资源的公开 URL 前缀，与 public/uploads 目录对应。 */
 export function buildUploadPublicUrl(userId: string, filename: string) {
-  return `/uploads/${userId}/${filename}`;
+  return buildPublicUrl(userId, filename);
 }
 
-export function isLocalUploadUrl(url: string) {
-  return url.startsWith("/uploads/");
-}
+export { isLocalUploadUrl };
 
 export function resolveUploadAbsolutePath(publicUrl: string) {
   if (!isLocalUploadUrl(publicUrl)) {

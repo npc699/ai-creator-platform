@@ -21,6 +21,7 @@ import { AssistantTabPanel } from "@/components/editor/assistant-tab-panel";
 import { AssetLibraryPanel } from "@/components/editor/AssetLibraryPanel";
 import { PromptLibraryPanel } from "@/components/editor/PromptLibraryPanel";
 import { EditorDraftPanel } from "@/components/editor/editor-draft-panel";
+import { EditorCoverButton } from "@/components/editor/editor-cover-button";
 import { EditorTagsButton } from "@/components/editor/editor-tags-button";
 import {
   EditorProvider,
@@ -234,6 +235,7 @@ function EditorPublishButton() {
     postId,
     title,
     tags,
+    coverUrl,
     draftId,
     userId,
     saveDraft,
@@ -281,6 +283,7 @@ function EditorPublishButton() {
           content,
           draftId: publishDraftId,
           tags,
+          coverUrl,
         }),
         credentials: "same-origin",
       });
@@ -319,6 +322,7 @@ function EditorPublishButton() {
     saveDraft,
     showNoticeBanner,
     tags,
+    coverUrl,
     title,
   ]);
 
@@ -677,6 +681,7 @@ export function EditorLayoutClient({ userId, children }: EditorLayoutClientProps
 
           <div className="flex flex-wrap items-center gap-3 lg:justify-end lg:gap-4">
             <EditorSaveStatusIndicator />
+            <EditorCoverButton />
             <EditorTagsButton />
             <EditorManualSaveButton />
             <EditorPublishButton />

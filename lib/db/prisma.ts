@@ -17,7 +17,7 @@ if (!databaseUrl) {
 }
 
 /** schema 变更后更新此 key，避免 dev 热更新沿用旧 PrismaClient */
-const PRISMA_CLIENT_CACHE_KEY = "post-tags-v1";
+const PRISMA_CLIENT_CACHE_KEY = "cover-url-v1";
 
 const adapter = new PrismaPg(databaseUrl);
 
