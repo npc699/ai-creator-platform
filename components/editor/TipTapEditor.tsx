@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 
 import { EditorPostTagsDisplay } from "@/components/editor/editor-post-tags-display";
+import { EditorCoverDisplay } from "@/components/editor/editor-cover-display";
 import { createEditorExtensions } from "@/components/editor/editor-extensions";
 import { Toolbar } from "@/components/editor/Toolbar";
 import { useEditorContext } from "@/components/editor/editor-context";
@@ -163,7 +164,7 @@ export function TipTapEditor() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
       <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
-        <div className="mb-8 border-b border-zinc-200 pb-6">
+        <div className="mb-8 border-b border-zinc-200/80 pb-6">
           <input
             aria-label="文章标题"
             className="w-full bg-transparent text-3xl font-semibold tracking-tight text-zinc-950 outline-none placeholder:text-zinc-300"
@@ -174,6 +175,7 @@ export function TipTapEditor() {
             type="text"
             value={title}
           />
+          <EditorCoverDisplay />
           <EditorPostTagsDisplay />
         </div>
 

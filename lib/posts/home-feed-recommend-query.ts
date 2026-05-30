@@ -9,7 +9,7 @@ import {
   encodeHomeCursor,
 } from "@/lib/posts/home-cursor";
 import type { FetchHomeFeedPageOptions, HomeFeedListItem } from "@/lib/posts/home-feed-query";
-import { HOME_TOPIC_TAGS } from "@/lib/posts/home-list";
+import { resolveTopicTagFilter } from "@/lib/feed/topic-params";
 import { recommendScoreSql, RECOMMEND_FORMULA_VERSION } from "@/lib/posts/home-recommend-score";
 import { getLikedPostIds } from "@/lib/posts/metrics";
 import { buildPostHref } from "@/lib/posts/reader-navigation";
@@ -24,10 +24,13 @@ type RecommendFeedRow = {
   viewCount: number;
   likeCount: number;
   tags: string[];
+  coverUrl: string | null;
   qualityScore: number | null;
   user_name: string | null;
   user_email: string | null;
   user_phone: string | null;
+  user_id: string;
+  user_image: string | null;
   recommendScore: number;
 };
 
@@ -42,17 +45,20 @@ function mapRecommendRow(row: RecommendFeedRow) {
     viewCount: row.viewCount,
     likeCount: row.likeCount,
     tags: row.tags,
+    coverUrl: row.coverUrl,
     qualityScore: row.qualityScore,
     user: {
+      id: row.user_id,
       name: row.user_name,
       email: row.user_email,
       phone: row.user_phone,
+      image: row.user_image,
     },
   };
 }
 
 function buildTopicTagSql(topic: string | null) {
-  const tags = topic ? HOME_TOPIC_TAGS[topic] : undefined;
+  const tags = resolveTopicTagFilter(topic);
   if (!tags?.length) {
     return Prisma.empty;
   }
@@ -96,11 +102,14 @@ export async function fetchHomeFeedRecommendPage(
           p."updatedAt",
           p."viewCount",
           p."likeCount",
+          p."coverUrl",
           p."qualityScore",
           p.tags,
           u.name AS user_name,
           u.email AS user_email,
           u.phone AS user_phone,
+          u.id AS user_id,
+          u.image AS user_image,
           ${Prisma.raw(scoreExpr)} AS "recommendScore"
         FROM "Post" p
         INNER JOIN "User" u ON u.id = p."userId"
@@ -117,11 +126,14 @@ export async function fetchHomeFeedRecommendPage(
         s."updatedAt",
         s."viewCount",
         s."likeCount",
+        s."coverUrl",
         s."qualityScore",
         s.tags,
         s.user_name,
         s.user_email,
         s.user_phone,
+        s.user_id,
+        s.user_image,
         s."recommendScore"
       FROM scored s
       WHERE 1 = 1
@@ -135,13 +147,10 @@ export async function fetchHomeFeedRecommendPage(
   const pageRows = hasMore ? rows.slice(0, limit) : rows;
   const pagePosts = pageRows.map(mapRecommendRow);
 
+  const postIds = pagePosts.map((post) => post.id);
   const likedPostIds = options.userId
-    ? await getLikedPostIds(
-        options.userId,
-        pagePosts.map((post) => post.id)
-      )
+    ? await getLikedPostIds(options.userId, postIds)
     : new Set<string>();
-
   const items: HomeFeedListItem[] = pagePosts.map((post) => ({
     ...mapPostToHomeFeedItem(post),
     href: buildPostHref(post.id, options.homeReturnPath),

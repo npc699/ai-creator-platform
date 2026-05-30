@@ -31,7 +31,10 @@ export function AssetsPageContent({ initialItems }: AssetsPageContentProps) {
 
   const handleAssetAdded = (asset: EditorAsset) => {
     const mapped = toListItem(asset);
-    setItems((current) => [mapped, ...current.filter((item) => item.id !== mapped.id)]);
+    setItems((current) => [
+      mapped,
+      ...current.filter((item) => item.id !== mapped.id),
+    ]);
   };
 
   return (
@@ -50,7 +53,9 @@ export function AssetsPageContent({ initialItems }: AssetsPageContentProps) {
 
       {items.length === 0 ? (
         <div className="px-6 py-16 text-center">
-          <p className="text-sm text-zinc-600">还没有素材，点击右上角添加图片</p>
+          <p className="text-sm text-zinc-600">
+            还没有素材，点击右上角添加图片
+          </p>
         </div>
       ) : (
         <AssetGrid items={items} onItemsChange={setItems} />

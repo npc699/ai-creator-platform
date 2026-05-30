@@ -6,6 +6,7 @@ const editDraftSelect = {
   title: true,
   content: true,
   tags: true,
+  coverUrl: true,
   promptId: true,
   updatedAt: true,
 } as const;
@@ -26,6 +27,7 @@ export async function findOrCreateEditDraft(postId: string, userId: string) {
       title: true,
       content: true,
       tags: true,
+      coverUrl: true,
       promptId: true,
     },
   });
@@ -55,6 +57,7 @@ export async function findOrCreateEditDraft(postId: string, userId: string) {
         title: post.title,
         content: post.content,
         tags: post.tags,
+        coverUrl: post.coverUrl,
         promptId: post.promptId,
       },
       select: editDraftSelect,

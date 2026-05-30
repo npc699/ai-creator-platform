@@ -1,6 +1,12 @@
-import { PostStatus } from "@/lib/generated/prisma/client";
-import { buildPostExcerpt } from "@/lib/posts/excerpt";
 import type { FeedArticleItem } from "@/lib/feed/types";
+import {
+  computeIsRisingFast,
+  computeSustainedHotDays,
+} from "@/lib/feed/channel-badges";
+import { formatRelativeTime } from "@/lib/feed/format-relative-time";
+import type { FeedChannelParam } from "@/lib/feed/params";
+import { PostStatus } from "@/lib/generated/prisma/client";
+import { buildFeedListExcerpt } from "@/lib/posts/excerpt";
 
 export function getAuthorLabel(user: {
   name?: string | null;
@@ -43,6 +49,7 @@ type PublishedPostRecord = {
   viewCount: number;
   likeCount: number;
   tags: string[];
+  coverUrl?: string | null;
   qualityScore?: number | null;
   reviewStatus?: string | null;
   prompt: { title: string } | null;
@@ -60,46 +67,93 @@ function mapPostStatusToPublishStatus(
   return undefined;
 }
 
+type AuthorFeedMeta = {
+  id: string;
+  image?: string | null;
+};
+
 /** 将已发布 Post 转为 Feed 卡片数据结构。 */
 export function mapPublishedPostToFeedItem(
   post: PublishedPostRecord,
-  authorLabel: string
+  authorLabel: string,
+  authorMeta?: AuthorFeedMeta
 ): FeedArticleItem {
+  const coverUrl = post.coverUrl ?? null;
   return {
     id: post.id,
     author: authorLabel,
+    authorId: authorMeta?.id ?? "",
+    authorImage: authorMeta?.image ?? null,
     time: formatPublishedTime(post.publishedAt ?? post.updatedAt),
     title: post.title,
-    excerpt: buildPostExcerpt(post.content),
+    excerpt: buildFeedListExcerpt(post.content, Boolean(coverUrl)),
     score: getPostDisplayScore(post.qualityScore),
     tags: post.tags,
     views: post.viewCount,
     likes: post.likeCount,
     href: `/posts/${post.id}`,
-    singleLineExcerpt: true,
     publishStatus: mapPostStatusToPublishStatus(post.status),
     reviewPending: post.reviewStatus === "PENDING",
     persistMetrics: true,
+    coverUrl,
   };
 }
 
 type HomePostRecord = Omit<PublishedPostRecord, "prompt"> & {
   user: {
+    id: string;
     name: string | null;
     email: string | null;
     phone: string | null;
+    image?: string | null;
   };
 };
 
+type MapHomeFeedOptions = {
+  showRank?: boolean;
+  rank?: number;
+  channel?: FeedChannelParam;
+};
+
 /** 首页 Feed：全站已发布文章，不展示作者私有的上线状态角标。 */
-export function mapPostToHomeFeedItem(post: HomePostRecord): FeedArticleItem {
+export function mapPostToHomeFeedItem(
+  post: HomePostRecord,
+  options?: MapHomeFeedOptions
+): FeedArticleItem {
+  const publishedAt = post.publishedAt ?? post.updatedAt;
+  const rank = options?.showRank ? options.rank : undefined;
+
   const item = mapPublishedPostToFeedItem(
     { ...post, prompt: null },
-    getAuthorLabel(post.user)
+    getAuthorLabel(post.user),
+    { id: post.user.id, image: post.user.image ?? null }
   );
+
+  if (options?.channel === "hot") {
+    return {
+      ...item,
+      publishStatus: undefined,
+      persistMetrics: true,
+      rank,
+      time: formatRelativeTime(publishedAt),
+      isRisingFast: computeIsRisingFast(post, rank),
+    };
+  }
+
+  if (options?.channel === "viral") {
+    return {
+      ...item,
+      publishStatus: undefined,
+      persistMetrics: true,
+      time: formatRelativeTime(publishedAt),
+      sustainedHotDays: computeSustainedHotDays(post),
+    };
+  }
+
   return {
     ...item,
     publishStatus: undefined,
     persistMetrics: true,
+    rank,
   };
 }

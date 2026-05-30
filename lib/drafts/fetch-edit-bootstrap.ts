@@ -4,12 +4,13 @@ type EditBootstrapPayload = {
   title: string;
   content: string;
   tags: string[];
+  coverUrl: string | null;
   updatedAt: string;
 };
 
 const inflight = new Map<string, Promise<EditBootstrapPayload>>();
 
-/** 同一 postId 的 bootstrap 请求去重，避免 Strict Mode 双挂载并发打穿服务端。 */
+/** 同一 postId 的 bootstrap 请求去重，避免 Strict Mode 双挂载并发触发服务端竞态。 */
 export function fetchEditBootstrap(postId: string) {
   const cached = inflight.get(postId);
   if (cached) {

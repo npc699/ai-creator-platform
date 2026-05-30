@@ -4,6 +4,7 @@ const baseFeedItems: FeedArticleItem[] = [
   {
     id: "1",
     author: "科技观察员",
+    authorId: "mock-author-1",
     time: "2 小时前",
     title: "2026 年 AI 写作工具横评：从效率到质量的 5 个维度",
     excerpt:
@@ -15,6 +16,7 @@ const baseFeedItems: FeedArticleItem[] = [
   {
     id: "2",
     author: "运营研究社",
+    authorId: "mock-author-2",
     time: "4 小时前",
     title: "短视频脚本 3 段式结构：开头 3 秒决定完播率",
     excerpt:
@@ -26,6 +28,7 @@ const baseFeedItems: FeedArticleItem[] = [
   {
     id: "3",
     author: "内容增长笔记",
+    authorId: "mock-author-3",
     time: "昨天",
     title: "公众号标题 21 种公式：点击率提升 37% 的实测",
     excerpt:

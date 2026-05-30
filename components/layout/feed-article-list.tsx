@@ -9,7 +9,7 @@ type FeedArticleListProps = {
 
 export function FeedArticleList({ items, scrollStorageKey }: FeedArticleListProps) {
   return (
-    <div className="space-y-4 p-4">
+    <div className="px-5 py-2">
       {items.map(({ id, persistMetrics, likedByViewer, canLike, ...item }) => (
         <FeedArticleCard
           key={id}

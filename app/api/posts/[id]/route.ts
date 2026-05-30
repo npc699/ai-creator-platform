@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { invalidateFeedLeaderboardOnPostVisibilityChange } from "@/lib/feed/post-visibility";
 import { PostStatus } from "@/lib/generated/prisma/client";
 import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import {
@@ -227,6 +228,10 @@ export async function PATCH(
           status === PostStatus.PUBLISHED
             ? (post.publishedAt ?? new Date())
             : post.publishedAt,
+        // 下线后清零榜单分，避免高残留分在边界条件下被误查
+        ...(status === PostStatus.ARCHIVED
+          ? { hotScore: 0, viralScore: 0, scoreUpdatedAt: new Date() }
+          : {}),
         ...(reviewResult
           ? {
               qualityScore: reviewResult.qualityScore,
@@ -266,6 +271,10 @@ export async function PATCH(
     return updatedPost;
   });
 
+  if (updated.status !== post.status) {
+    await invalidateFeedLeaderboardOnPostVisibilityChange();
+  }
+
   return NextResponse.json({ post: updated, reviewResult });
 }
 
@@ -280,6 +289,7 @@ export async function DELETE(
   }
 
   await prisma.post.delete({ where: { id } });
+  await invalidateFeedLeaderboardOnPostVisibilityChange();
 
   return NextResponse.json({ ok: true });
 }

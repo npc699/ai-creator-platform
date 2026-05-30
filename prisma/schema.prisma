@@ -67,10 +67,11 @@ model User {
   passwordHash String?
   name         String?
   image        String?
+  bio          String?  @db.Text
   role         Role     @default(USER)
   posts        Post[]
-  postLikes    PostLike[]
-  postViews    PostView[]
+  postLikes      PostLike[]
+  postViews      PostView[]
   reviewRecords ReviewRecord[]
   drafts       Draft[]
   prompts         Prompt[]
@@ -140,6 +141,8 @@ model Draft {
   /** 非空表示该草稿是某篇已发布文章的编辑层，自动保存只写此处，不直接改 Post。 */
   sourcePostId String?  @unique
   tags         String[] @default([])
+  /** 列表封面图，独立于正文 HTML。 */
+  coverUrl     String?
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   prompt       Prompt?  @relation(fields: [promptId], references: [id], onDelete: SetNull)
   publishedAs  Post?    @relation("PublishedFromDraft")
@@ -161,7 +164,14 @@ model Post {
   publishedAt DateTime?
   viewCount   Int        @default(0)
   likeCount   Int        @default(0)
+  /** 热点榜预计算分，由定时任务刷新。 */
+  hotScore    Float      @default(0)
+  /** 爆文榜预计算分，由定时任务刷新。 */
+  viralScore  Float      @default(0)
+  scoreUpdatedAt DateTime?
   tags        String[]   @default([])
+  /** 列表封面图，独立于正文 HTML。 */
+  coverUrl    String?
   qualityScore Float?
   reviewStatus ReviewStatus @default(PENDING)
   reviewRiskLevel ReviewRiskLevel @default(NONE)
@@ -187,6 +197,8 @@ model Post {
   @@index([status, publishedAt(sort: Desc)])
   @@index([status, likeCount(sort: Desc), publishedAt(sort: Desc)])
   @@index([status, viewCount(sort: Desc), publishedAt(sort: Desc)])
+  @@index([status, hotScore(sort: Desc), publishedAt(sort: Desc)])
+  @@index([status, viralScore(sort: Desc), publishedAt(sort: Desc)])
 }
 
 /** AI 审核记录保留每次判定快照，便于追溯误判与 Prompt 迭代。 */

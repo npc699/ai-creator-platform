@@ -1,6 +1,5 @@
 import { ContentPanel } from "@/components/layout/content-panel";
-import { DraftArticleList } from "@/components/layout/draft-article-list";
-import { FeedEmptyState } from "@/components/layout/feed-empty-state";
+import { DraftsPageContent } from "@/components/layout/drafts-page-content";
 import { FeedPageLayout } from "@/components/layout/feed-page-layout";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -19,6 +18,7 @@ export default async function DraftsPage() {
           id: true,
           title: true,
           content: true,
+          coverUrl: true,
           updatedAt: true,
           prompt: {
             select: { title: true },
@@ -28,20 +28,14 @@ export default async function DraftsPage() {
     : [];
 
   const authorLabel = user ? getAuthorLabel(user) : "我";
-  const feedItems = drafts.map((draft) => mapDraftToFeedItem(draft, authorLabel));
+  const feedItems = drafts.map((draft) =>
+    mapDraftToFeedItem(draft, authorLabel, user?.id ?? "")
+  );
 
   return (
     <FeedPageLayout>
       <ContentPanel>
-        {feedItems.length === 0 ? (
-          <FeedEmptyState
-            actionHref="/editor"
-            actionLabel="去编辑器创作"
-            message="还没有草稿，去编辑器开始创作吧"
-          />
-        ) : (
-          <DraftArticleList items={feedItems} userId={user?.id} />
-        )}
+        <DraftsPageContent items={feedItems} userId={user?.id} />
       </ContentPanel>
     </FeedPageLayout>
   );

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { coverUrlSchema } from "@/lib/validations/cover-url";
+
 const POST_CONTENT_MAX_BYTES = 1_000_000;
 
 function stripHtmlText(html: string) {
@@ -33,6 +35,7 @@ export const postPublishSchema = z.object({
   draftId: draftIdSchema,
   promptId: draftIdSchema,
   tags: postTagsSchema,
+  coverUrl: coverUrlSchema,
 });
 
 export const postUpdateSchema = z.object({

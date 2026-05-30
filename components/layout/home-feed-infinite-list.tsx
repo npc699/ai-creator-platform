@@ -9,31 +9,34 @@ import {
   useState,
 } from "react";
 
-import { FeedArticleCard } from "@/components/layout/feed-article-card";
+import { FeedListItemSkeleton } from "@/components/layout/feed-article-card-skeleton";
 import {
   clearFeedScrollPayload,
   readFeedScrollPayload,
 } from "@/components/layout/feed-scroll-restore";
-import type { FeedSort } from "@/lib/feed/params";
-import type { HomeFeedListItem, HomeFeedPageResult } from "@/lib/posts/home-feed-query";
+import { HomeFeedListItem } from "@/components/layout/home-feed-list-item";
+import { HotFeedListItem } from "@/components/layout/hot-feed-list-item";
+import { ViralFeedListItem } from "@/components/layout/viral-feed-list-item";
+import type { FeedChannelParam, FeedSort } from "@/lib/feed/params";
+import type { HomeFeedListItem as HomeFeedListItemData, HomeFeedPageResult } from "@/lib/posts/home-feed-query";
 import { mergeUniqueFeedItems } from "@/lib/posts/merge-feed-items";
 
-const LIST_GAP_PX = 16;
-const ESTIMATED_ROW_PX = 220;
+const LIST_GAP_PX = 0;
+const ESTIMATED_ROW_PX = 145;
 
 type HomeFeedInfiniteListProps = {
-  initialItems: HomeFeedListItem[];
+  initialItems: HomeFeedListItemData[];
   initialNextCursor: string | null;
   initialHasMore: boolean;
   scrollStorageKey: string;
   homeReturnPath: string;
-  channel: string | null;
+  channel: FeedChannelParam;
   sort: FeedSort;
   topic: string | null;
 };
 
 function buildHomeFeedApiUrl(options: {
-  channel: string | null;
+  channel: FeedChannelParam;
   sort: FeedSort;
   topic: string | null;
   homeReturnPath: string;
@@ -76,6 +79,16 @@ function waitForNextFrame() {
   });
 }
 
+function getSkeletonVariant(channel: FeedChannelParam): "default" | "hot" | "viral" {
+  if (channel === "hot") {
+    return "hot";
+  }
+  if (channel === "viral") {
+    return "viral";
+  }
+  return "default";
+}
+
 export function HomeFeedInfiniteList({
   initialItems,
   initialNextCursor,
@@ -86,6 +99,8 @@ export function HomeFeedInfiniteList({
   sort,
   topic,
 }: HomeFeedInfiniteListProps) {
+  const skeletonVariant = getSkeletonVariant(channel);
+
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [hasMore, setHasMore] = useState(initialHasMore);
@@ -271,7 +286,7 @@ export function HomeFeedInfiniteList({
   const virtualRows = virtualizer.getVirtualItems();
 
   return (
-    <div className="p-4">
+    <div className="px-5 py-2">
       {isRestoring ? (
         <p className="py-8 text-center text-sm text-zinc-500">正在恢复浏览位置…</p>
       ) : null}
@@ -291,7 +306,8 @@ export function HomeFeedInfiniteList({
             return null;
           }
 
-          const { id, likedByViewer, canLike, ...cardProps } = item;
+          const { id, likedByViewer, canLike, rank, isRisingFast, sustainedHotDays, ...cardProps } =
+            item;
 
           return (
             <div
@@ -304,14 +320,40 @@ export function HomeFeedInfiniteList({
                 paddingBottom: LIST_GAP_PX,
               }}
             >
-              <FeedArticleCard
-                {...cardProps}
-                canLike={canLike}
-                initialLiked={likedByViewer}
-                postId={id}
-                scrollLoadedCount={items.length}
-                scrollStorageKey={scrollStorageKey}
-              />
+              {channel === "hot" && rank != null ? (
+                <HotFeedListItem
+                  {...cardProps}
+                  canLike={canLike}
+                  initialLiked={likedByViewer}
+                  isRisingFast={isRisingFast}
+                  postId={id}
+                  profileReturnPath={homeReturnPath}
+                  rank={rank}
+                  scrollLoadedCount={items.length}
+                  scrollStorageKey={scrollStorageKey}
+                />
+              ) : channel === "viral" ? (
+                <ViralFeedListItem
+                  {...cardProps}
+                  canLike={canLike}
+                  initialLiked={likedByViewer}
+                  postId={id}
+                  profileReturnPath={homeReturnPath}
+                  scrollLoadedCount={items.length}
+                  scrollStorageKey={scrollStorageKey}
+                  sustainedHotDays={sustainedHotDays}
+                />
+              ) : (
+                <HomeFeedListItem
+                  {...cardProps}
+                  canLike={canLike}
+                  initialLiked={likedByViewer}
+                  postId={id}
+                  profileReturnPath={homeReturnPath}
+                  scrollLoadedCount={items.length}
+                  scrollStorageKey={scrollStorageKey}
+                />
+              )}
             </div>
           );
         })}
@@ -320,7 +362,14 @@ export function HomeFeedInfiniteList({
       <div ref={sentinelRef} className="h-4 w-full" aria-hidden />
 
       {isFetching ? (
-        <p className="py-6 text-center text-sm text-zinc-500">加载中…</p>
+        <div className="py-2">
+          <FeedListItemSkeleton variant={skeletonVariant} withAvatar={skeletonVariant === "default"} />
+          <FeedListItemSkeleton
+            variant={skeletonVariant}
+            withAvatar={skeletonVariant === "default"}
+            withCover
+          />
+        </div>
       ) : null}
 
       {!hasMore && items.length > 0 && !isFetching ? (
@@ -329,7 +378,7 @@ export function HomeFeedInfiniteList({
 
       {fetchError ? (
         <div className="py-4 text-center">
-          <p className="text-sm text-red-500">{fetchError}</p>
+          <p className="text-sm text-red-500">加载失败，点击重试</p>
           <button
             className="mt-2 text-sm font-medium text-brand-primary hover:underline"
             onClick={() => void fetchNextPage()}

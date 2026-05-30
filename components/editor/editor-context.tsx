@@ -13,6 +13,7 @@ import {
 import type { Editor as TipTapEditor } from "@tiptap/react";
 
 import { AiGeneratedMark } from "@/components/editor/extensions/ai-generated-mark";
+import { EditorCoverDialogHost } from "@/components/editor/editor-cover-dialog-host";
 import {
   useDraftAutosave,
   type AutosaveStatus,
@@ -75,6 +76,12 @@ type EditorContextValue = {
   setTags: (tags: string[]) => void;
   addTag: (raw: string) => { ok: true } | { ok: false; message: string };
   removeTag: (tag: string) => void;
+  coverUrl: string | null;
+  setCoverUrl: (url: string | null) => void;
+  clearCoverUrl: () => void;
+  isCoverDialogOpen: boolean;
+  openCoverDialog: () => void;
+  closeCoverDialog: () => void;
   draftId: string | null;
   hydratedContent: string | null;
   saveStatus: AutosaveStatus;
@@ -343,6 +350,8 @@ export function EditorProvider({
   // 草稿相关状态：title 是 UI 受控字段，content 不进 state，避免高频输入触发整树重渲染。
   const [title, setTitle] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [coverUrl, setCoverUrlState] = useState<string | null>(null);
+  const [isCoverDialogOpen, setIsCoverDialogOpen] = useState(false);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [hydratedContent, setHydratedContent] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<AutosaveStatus>("idle");
@@ -419,6 +428,22 @@ export function EditorProvider({
     setTags(next);
   }, []);
 
+  const setCoverUrl = useCallback((url: string | null) => {
+    setCoverUrlState(url);
+  }, []);
+
+  const clearCoverUrl = useCallback(() => {
+    setCoverUrlState(null);
+  }, []);
+
+  const openCoverDialog = useCallback(() => {
+    setIsCoverDialogOpen(true);
+  }, []);
+
+  const closeCoverDialog = useCallback(() => {
+    setIsCoverDialogOpen(false);
+  }, []);
+
   const {
     seedSavedSnapshot: seedDraftSnapshot,
     saveDraft: saveDraftToCloud,
@@ -429,6 +454,7 @@ export function EditorProvider({
     userId,
     title,
     tags,
+    coverUrl,
     getContent,
     draftId,
     isOnline,
@@ -531,6 +557,7 @@ export function EditorProvider({
     void (async () => {
       setIsAutosaveReady(false);
       setTags([]);
+      setCoverUrl(null);
 
       if (postId) {
         setDraftId(null);
@@ -569,6 +596,7 @@ export function EditorProvider({
             content: data.content,
             updatedAt: data.updatedAt,
             tags: data.tags,
+            coverUrl: data.coverUrl,
           };
 
           let localDraft = null;
@@ -590,6 +618,7 @@ export function EditorProvider({
                 ...pick.localRecordToPersist,
                 sourcePostId: data.postId,
                 tags: data.tags,
+                coverUrl: data.coverUrl,
               });
             } catch {
               // 本地缓存失败不影响编辑
@@ -612,9 +641,14 @@ export function EditorProvider({
             pick.source === "local"
               ? (localDraft?.tags ?? data.tags)
               : (data.tags ?? []);
+          const loadedCoverUrl =
+            pick.source === "local"
+              ? (localDraft?.coverUrl ?? data.coverUrl ?? null)
+              : (data.coverUrl ?? localDraft?.coverUrl ?? null);
 
           setTitle(loaded.title);
           setTags(loadedTags);
+          setCoverUrl(loadedCoverUrl);
           setDraftId(loaded.id);
           setHydratedContent(loaded.content);
           setNoticeBanner({
@@ -626,7 +660,7 @@ export function EditorProvider({
           if (loaded.updatedAt) {
             setLastSavedAt(new Date(loaded.updatedAt));
           }
-          seedDraftSnapshot(loaded.title, loaded.content, loadedTags);
+          seedDraftSnapshot(loaded.title, loaded.content, loadedTags, loadedCoverUrl);
           setIsAutosaveReady(true);
           return;
         }
@@ -690,9 +724,14 @@ export function EditorProvider({
             pick.source === "local"
               ? (localDraft?.tags ?? requestedDraft.tags ?? [])
               : (requestedDraft.tags ?? []);
+          const loadedCoverUrl =
+            pick.source === "local"
+              ? (localDraft?.coverUrl ?? requestedDraft.coverUrl ?? null)
+              : (requestedDraft.coverUrl ?? localDraft?.coverUrl ?? null);
 
           setTitle(loaded.title);
           setTags(loadedTags);
+          setCoverUrl(loadedCoverUrl);
           setDraftId(loaded.id);
           setHydratedContent(loaded.content);
           setNoticeBanner({
@@ -706,7 +745,12 @@ export function EditorProvider({
           if (loaded.updatedAt) {
             setLastSavedAt(new Date(loaded.updatedAt));
           }
-          seedDraftSnapshot(loaded.title, loaded.content, loadedTags);
+          seedDraftSnapshot(
+            loaded.title,
+            loaded.content,
+            loadedTags,
+            loadedCoverUrl
+          );
           return;
         }
 
@@ -714,9 +758,10 @@ export function EditorProvider({
           setNoticeBanner({ message: "草稿不存在或已发布", tone: "error" });
           setTitle("");
           setTags([]);
+          setCoverUrl(null);
           setDraftId(null);
           setHydratedContent("");
-          seedDraftSnapshot("", "", []);
+          seedDraftSnapshot("", "", [], null);
           return;
         }
 
@@ -724,9 +769,10 @@ export function EditorProvider({
         await clearNewDraftLocal(userId);
         setTitle("");
         setTags([]);
+        setCoverUrl(null);
         setDraftId(null);
         setHydratedContent("");
-        seedDraftSnapshot("", "", []);
+        seedDraftSnapshot("", "", [], null);
         setSaveStatus("idle");
         setLastSavedAt(null);
         setNoticeBanner(null);
@@ -976,6 +1022,12 @@ export function EditorProvider({
       setTags: replaceTags,
       addTag,
       removeTag,
+      coverUrl,
+      setCoverUrl,
+      clearCoverUrl,
+      isCoverDialogOpen,
+      openCoverDialog,
+      closeCoverDialog,
       draftId,
       hydratedContent,
       saveStatus,
@@ -1027,13 +1079,22 @@ export function EditorProvider({
       replaceTags,
       addTag,
       removeTag,
+      coverUrl,
+      setCoverUrl,
+      clearCoverUrl,
+      isCoverDialogOpen,
+      openCoverDialog,
+      closeCoverDialog,
       title,
       userId,
     ]
   );
 
   return (
-    <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
+    <EditorContext.Provider value={value}>
+      {children}
+      <EditorCoverDialogHost />
+    </EditorContext.Provider>
   );
 }
 

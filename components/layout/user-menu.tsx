@@ -1,13 +1,16 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut } from "lucide-react";
+import { LogOut, User } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { buildAuthorProfilePath } from "@/lib/users/profile-navigation";
 import { borderBrandSoft, headerBadge } from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type UserMenuProps = {
+  userId: string;
   displayName: string;
   email?: string | null;
   phone?: string | null;
@@ -15,6 +18,7 @@ type UserMenuProps = {
 };
 
 export function UserMenu({
+  userId,
   displayName,
   email,
   phone,
@@ -102,8 +106,17 @@ export function UserMenu({
                 <p className="mt-1 text-xs font-medium text-brand-primary">管理员</p>
               ) : null}
             </div>
+            <Link
+              className="flex w-full items-center gap-2 px-4 py-3 text-sm text-zinc-700 transition hover:bg-zinc-50"
+              href={buildAuthorProfilePath(userId)}
+              onClick={() => setOpen(false)}
+              role="menuitem"
+            >
+              <User className="h-4 w-4" />
+              我的主页
+            </Link>
             <button
-              className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60"
+              className="flex w-full items-center gap-2 border-t border-zinc-100 px-4 py-3 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-60"
               disabled={isSigningOut}
               onClick={handleSignOut}
               role="menuitem"

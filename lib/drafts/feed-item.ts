@@ -1,4 +1,4 @@
-import { buildPostExcerpt } from "@/lib/posts/excerpt";
+import { buildFeedListExcerpt } from "@/lib/posts/excerpt";
 import type { FeedArticleItem } from "@/lib/feed/types";
 import { formatPublishedTime, getAuthorLabel } from "@/lib/posts/feed-item";
 
@@ -9,24 +9,29 @@ type DraftRecord = {
   title: string;
   content: string;
   updatedAt: Date;
+  coverUrl?: string | null;
   prompt: { title: string } | null;
 };
 
 /** 将 Draft 转为 Feed 卡片数据结构。 */
 export function mapDraftToFeedItem(
   draft: DraftRecord,
-  authorLabel: string
+  authorLabel: string,
+  authorId = ""
 ): FeedArticleItem {
+  const coverUrl = draft.coverUrl ?? null;
+
   return {
     id: draft.id,
     author: authorLabel,
+    authorId,
     time: formatPublishedTime(draft.updatedAt),
     title: draft.title || "无标题草稿",
-    excerpt: buildPostExcerpt(draft.content),
+    excerpt: buildFeedListExcerpt(draft.content, Boolean(coverUrl)),
     score: null,
     views: 0,
     likes: 0,
     href: `/editor?draftId=${draft.id}`,
-    singleLineExcerpt: true,
+    coverUrl,
   };
 }

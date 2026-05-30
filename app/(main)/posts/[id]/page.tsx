@@ -14,6 +14,7 @@ import {
   getAuthorLabel,
   getPostDisplayScore,
 } from "@/lib/posts/feed-item";
+import { getLikedPostIds } from "@/lib/posts/metrics";
 import { getPostReaderBackTarget } from "@/lib/posts/reader-navigation";
 
 type PostPageProps = {
@@ -116,6 +117,12 @@ export default async function PostPage({ params, searchParams }: PostPageProps) 
       ? getQualityDimensions(post.reviewRecords[0]?.result)
       : null;
 
+  const likedByViewer = user
+    ? (await getLikedPostIds(user.id, [post.id])).has(post.id)
+    : false;
+  const canLike =
+    Boolean(user) && !isAuthor && post.status === "PUBLISHED";
+
   return (
     <FeedPageLayout>
       <ContentPanel
@@ -134,8 +141,12 @@ export default async function PostPage({ params, searchParams }: PostPageProps) 
         <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
           <PostPublishedToast />
           <PostArticleHeader
+            authorId={post.userId}
             authorImage={post.user.image}
             authorName={getAuthorLabel(post.user)}
+            authorReturnPath={from ?? `/posts/${post.id}`}
+            canLike={canLike}
+            initialLiked={likedByViewer}
             likeCount={post.likeCount}
             postId={post.id}
             publishedLabel={publishedLabel}

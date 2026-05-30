@@ -43,6 +43,7 @@ export async function POST(
       content: true,
       tags: true,
       promptId: true,
+      coverUrl: true,
     },
   });
 
@@ -89,6 +90,7 @@ export async function POST(
         title: editDraft.title,
         content: editDraft.content,
         tags: editDraft.tags,
+        coverUrl: editDraft.coverUrl,
         promptId: editDraft.promptId,
         qualityScore: reviewResult.qualityScore,
         reviewStatus: reviewResult.status,

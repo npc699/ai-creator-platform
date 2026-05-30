@@ -23,6 +23,7 @@ async function loadOwnedDraft(id: string) {
       title: true,
       content: true,
       tags: true,
+      coverUrl: true,
       updatedAt: true,
       promptId: true,
       sourcePostId: true,
@@ -65,6 +66,7 @@ export async function GET(
       tags: draft.tags,
       promptId: draft.promptId,
       sourcePostId: draft.sourcePostId,
+      coverUrl: draft.coverUrl,
       updatedAt: draft.updatedAt,
     },
   });
@@ -95,7 +97,7 @@ export async function PUT(
     );
   }
 
-  const { title, content, promptId, tags } = parsed.data;
+  const { title, content, promptId, tags, coverUrl } = parsed.data;
 
   const promptError = await assertOwnedPromptId(result.user.id, promptId);
   if (promptError) {
@@ -109,6 +111,7 @@ export async function PUT(
       content,
       promptId: promptId ?? null,
       ...(tags !== undefined ? { tags } : {}),
+      ...(coverUrl !== undefined ? { coverUrl } : {}),
     },
     select: {
       id: true,

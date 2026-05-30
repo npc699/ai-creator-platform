@@ -15,9 +15,21 @@ export const FEED_SORT_OPTIONS: { sort: FeedSort; label: string }[] = [
   { sort: "views", label: "最多浏览" },
 ];
 
-const CHANNEL_LABELS: Record<FeedChannel, string> = {
-  hot: "热点榜单",
-  viral: "爆文榜单",
+/** 频道页 Header 文案，供 ChannelFeedHeader 与侧栏统一引用。 */
+export const CHANNEL_META: Record<
+  FeedChannel,
+  { title: string; subtitle: string; iconTone: "amber" | "emerald" }
+> = {
+  hot: {
+    title: "热点榜单",
+    subtitle: "实时热度排行 · 每 10 分钟更新",
+    iconTone: "amber",
+  },
+  viral: {
+    title: "爆文榜单",
+    subtitle: "综合质量排行 · 近 7 天优质内容",
+    iconTone: "emerald",
+  },
 };
 
 export function parseFeedChannel(value: string | null): FeedChannelParam {

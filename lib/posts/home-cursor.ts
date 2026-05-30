@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { Prisma } from "@/lib/generated/prisma/client";
 import type { FeedChannelParam, FeedSort } from "@/lib/feed/params";
+import { HOT_FORMULA_VERSION } from "@/lib/feed/hot-score";
+import { VIRAL_FORMULA_VERSION } from "@/lib/feed/viral-score";
 import {
   computeHomeRecommendScore,
   RECOMMEND_FORMULA_VERSION,
@@ -47,15 +49,19 @@ const homeCursorSchema = z.discriminatedUnion("mode", [
   }),
   z.object({
     mode: z.literal("hot"),
-    viewCount: z.number().int().nonnegative(),
+    hotScore: z.number().finite(),
     publishedAt: isoDate,
     id: z.string().min(1),
+    formulaVersion: z.number().int().positive().optional(),
+    /** 上一页已展示条数，用于深页继续展示全局排名。 */
+    offset: z.number().int().nonnegative().optional(),
   }),
   z.object({
     mode: z.literal("viral"),
-    likeCount: z.number().int().nonnegative(),
+    viralScore: z.number().finite(),
     publishedAt: isoDate,
     id: z.string().min(1),
+    formulaVersion: z.number().int().positive().optional(),
   }),
 ]);
 
@@ -67,6 +73,8 @@ type PostCursorSource = {
   updatedAt: Date;
   viewCount: number;
   likeCount: number;
+  hotScore?: number;
+  viralScore?: number;
   qualityScore?: number | null;
 };
 
@@ -100,7 +108,7 @@ function getSortPublishedAt(post: PostCursorSource) {
 export function buildHomeCursorFromPost(
   post: PostCursorSource,
   mode: HomePaginationMode,
-  options?: { scoreAsOf?: Date }
+  options?: { scoreAsOf?: Date; hotOffset?: number }
 ): HomeFeedCursor {
   const publishedAt = getSortPublishedAt(post).toISOString();
   const scoreAsOf = options?.scoreAsOf ?? new Date();
@@ -140,16 +148,19 @@ export function buildHomeCursorFromPost(
     case "hot":
       return {
         mode,
-        viewCount: post.viewCount,
+        hotScore: post.hotScore ?? 0,
         publishedAt,
         id: post.id,
+        formulaVersion: HOT_FORMULA_VERSION,
+        ...(options?.hotOffset != null ? { offset: options.hotOffset } : {}),
       };
     case "viral":
       return {
         mode,
-        likeCount: post.likeCount,
+        viralScore: post.viralScore ?? 0,
         publishedAt,
         id: post.id,
+        formulaVersion: VIRAL_FORMULA_VERSION,
       };
   }
 }
@@ -227,16 +238,19 @@ export function buildHomeCursorWhere(
       };
     }
     case "hot": {
+      if (cursor.formulaVersion !== HOT_FORMULA_VERSION) {
+        return {};
+      }
       const publishedAt = new Date(cursor.publishedAt);
       return {
         OR: [
-          { viewCount: { lt: cursor.viewCount } },
+          { hotScore: { lt: cursor.hotScore } },
           {
-            viewCount: cursor.viewCount,
+            hotScore: cursor.hotScore,
             publishedAt: { lt: publishedAt },
           },
           {
-            viewCount: cursor.viewCount,
+            hotScore: cursor.hotScore,
             publishedAt,
             id: { lt: cursor.id },
           },
@@ -244,16 +258,19 @@ export function buildHomeCursorWhere(
       };
     }
     case "viral": {
+      if (cursor.formulaVersion !== VIRAL_FORMULA_VERSION) {
+        return {};
+      }
       const publishedAt = new Date(cursor.publishedAt);
       return {
         OR: [
-          { likeCount: { lt: cursor.likeCount } },
+          { viralScore: { lt: cursor.viralScore } },
           {
-            likeCount: cursor.likeCount,
+            viralScore: cursor.viralScore,
             publishedAt: { lt: publishedAt },
           },
           {
-            likeCount: cursor.likeCount,
+            viralScore: cursor.viralScore,
             publishedAt,
             id: { lt: cursor.id },
           },

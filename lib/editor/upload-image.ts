@@ -42,3 +42,26 @@ export async function uploadEditorImage(file: File): Promise<EditorImageUploadRe
 
   return data;
 }
+
+/** 将 AI 等临时外链持久化到本站 uploads，不写入素材库（供封面等场景）。 */
+export async function persistRemoteEditorImage(
+  remoteUrl: string
+): Promise<EditorImageUploadResult> {
+  const response = await fetch("/api/uploads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: remoteUrl }),
+    credentials: "same-origin",
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseUploadError(response, "图片保存失败"));
+  }
+
+  const data = (await response.json()) as EditorImageUploadResult;
+  if (!data.url) {
+    throw new Error("保存响应无效");
+  }
+
+  return data;
+}

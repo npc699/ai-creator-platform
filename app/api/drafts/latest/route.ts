@@ -21,6 +21,7 @@ export async function GET() {
       title: true,
       content: true,
       promptId: true,
+      coverUrl: true,
       updatedAt: true,
     },
   });
