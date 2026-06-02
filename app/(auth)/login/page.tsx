@@ -1,3 +1,4 @@
+// 登录页必须是 Client Component：表单交互、signIn 调用与客户端路由跳转都在浏览器执行。
 "use client";
 
 import Link from "next/link";
@@ -15,6 +16,7 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  // identifier 同时支持邮箱与手机号，由服务端 Credentials Provider 解析。
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -25,6 +27,7 @@ export default function LoginPage() {
     setError("");
     setIsSubmitting(true);
 
+    // redirect: false 让页面自行处理成功/失败，避免 Auth.js 默认整页跳转。
     const result = await signIn("credentials", {
       identifier,
       password,
@@ -34,10 +37,12 @@ export default function LoginPage() {
     setIsSubmitting(false);
 
     if (result?.error) {
+      // 统一错误文案，不区分「账号不存在」与「密码错误」，降低账号枚举风险。
       setError("账号或密码不正确");
       return;
     }
 
+    // proxy.ts 在未登录访问受保护页时会写入 ?callbackUrl=...，登录成功后回跳原页面。
     const params = new URLSearchParams(window.location.search);
     const callbackPath = resolveSafeCallbackUrl(
       params.get("callbackUrl"),
@@ -45,6 +50,7 @@ export default function LoginPage() {
     );
 
     router.push(callbackPath);
+    // 刷新 Server Component 缓存，使主布局能读到刚写入的会话 Cookie。
     router.refresh();
   }
 
