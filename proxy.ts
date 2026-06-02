@@ -1,16 +1,20 @@
+// 页面级路由守卫：在渲染前拦截未登录访问，并处理登录态与认证页互斥跳转。
+// Next.js 16 根目录 proxy（Middleware 演进形态）；仅匹配页面，API 与静态资源不在此拦截。
+// 与 (main)/layout.tsx 的 getCurrentUser() 形成双重校验，layout 侧为兜底而非重复业务逻辑。
 import { getToken } from "next-auth/jwt";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getSafeCallbackPath } from "@/lib/auth/safe-callback-url";
 import { findActiveUserById } from "@/lib/auth/session-user";
 
-// 登录和注册页是访客唯一可访问的非 API 页面。
+// 访客可访问的页面白名单；其余路径默认需登录。
 const authRoutes = new Set(["/login", "/register"]);
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isAuthRoute = authRoutes.has(pathname);
-  // 在路由边界解码 Auth.js JWT，避免把 Prisma 引入 proxy 运行时。
+
+  // 只解码 JWT 取 userId，不引入 Auth.js 全栈；用户是否存在交给 session-user 轻量查库。
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
@@ -21,13 +25,13 @@ export async function proxy(request: NextRequest) {
   const activeUser = await findActiveUserById(userId);
   const isAuthenticated = activeUser !== null;
 
+  // 未登录访问受保护页 → 带安全 callbackUrl 跳转登录。
   if (!isAuthenticated && !isAuthRoute) {
     const loginUrl = new URL("/login", request.url);
-    // 仅写入通过白名单的同站路径，避免开放重定向到外部钓鱼站点。
     const safeCallbackPath = getSafeCallbackPath(pathname) ?? "/";
     loginUrl.searchParams.set("callbackUrl", safeCallbackPath);
 
-    // JWT 仍有效但用户已删除时，先走 signOut 清理 Cookie，再进入登录页。
+    // Cookie 仍有效但用户已删：先 signOut 清 Cookie，避免带着无效 JWT 反复重定向。
     if (token) {
       const signOutUrl = new URL("/api/auth/signout", request.url);
       signOutUrl.searchParams.set("callbackUrl", loginUrl.toString());
@@ -37,6 +41,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // 已登录用户不应再看到登录/注册页，直接送回首页。
   if (isAuthenticated && isAuthRoute) {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -45,6 +50,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // 只拦截页面请求；API、Next 静态资源和普通静态文件保持不受影响。
+  // 排除 api、Next 内部静态资源、favicon 及带扩展名的静态文件。
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

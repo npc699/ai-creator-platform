@@ -1,3 +1,8 @@
+## Agent 规则索引
+
+- 编码行为准则：`.cursor/rules/coding-behavior.mdc`
+- 代码注释规范：`.cursor/rules/commenting-standards.mdc`
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
