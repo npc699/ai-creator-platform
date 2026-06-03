@@ -1,3 +1,5 @@
+// 默认数据库种子（prisma.config.ts → npm run db:seed）：仅创建/更新一名开发 ADMIN，供首次登录。
+// 独立 PrismaClient：CLI 一次性脚本，不走 lib/db 单例，避免与 Next 进程共享 global 状态。
 import "dotenv/config";
 
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -15,7 +17,7 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg(databaseUrl),
 });
 
-// 开发管理员账号通过环境变量注入，避免把固定密码写进仓库。
+// 凭据走环境变量，避免把真实密码提交进仓库；未配置时用 README 文档默认值。
 const adminEmail = (
   process.env.DEV_ADMIN_EMAIL ?? "admin@localhost"
 ).toLowerCase();

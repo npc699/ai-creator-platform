@@ -1,8 +1,10 @@
+// 可选种子：为库内每个用户写入一批「个人」测试 Prompt（isOfficial=false）。
+// 运行：npm run db:seed:prompts；须先 db:seed。按锚点标题幂等，已有则跳过该用户。
 import "dotenv/config";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient, type PromptCategory } from "../lib/generated/prisma/client";
+import { PrismaClient, type PromptCategory } from "../../../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -22,7 +24,7 @@ type SeedPrompt = {
   usageCount?: number;
 };
 
-/** 用于判断是否已写入测试数据的锚点标题（首个种子条目）。 */
+// 用首条种子标题作幂等锚点，避免 createMany 重复灌入。
 const SEED_ANCHOR_TITLE = "痛点-方案型长文";
 
 const TEST_PROMPTS: SeedPrompt[] = [

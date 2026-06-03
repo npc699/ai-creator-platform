@@ -1,3 +1,5 @@
+// 运维回填：为测试用户已发布但 qualityScore 为空的文章补模拟质量分与 PASSED 审核态。
+// 运行：npm run db:backfill:test-quality；算法与 seed-test-posts 的 deriveTestQualityScore 相同。
 import "dotenv/config";
 
 import { readFile } from "node:fs/promises";
@@ -10,7 +12,7 @@ import {
   PrismaClient,
   ReviewRiskLevel,
   ReviewStatus,
-} from "../lib/generated/prisma/client";
+} from "../../../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -29,7 +31,7 @@ const ACCOUNTS_PATH = path.join(
   "accounts.json"
 );
 
-/** 与 seed-test-posts 一致的折合算法，保证回填结果可复现。 */
+/** 与 seed-test-posts 共用公式，改一处须同步另一处。 */
 function deriveTestQualityScore(input: {
   viewCount: number;
   likeCount: number;

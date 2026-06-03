@@ -1,3 +1,5 @@
+// 可选种子：创建 5 个固定 USER 测试账号，并把邮箱/密码/userId 写入 local/test-accounts（gitignore）。
+// 运行：npm run db:seed:test-users；下游 seed-test-posts 依赖 accounts.json 解析 userId。
 import "dotenv/config";
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -6,7 +8,7 @@ import path from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-import { PrismaClient, Role } from "../lib/generated/prisma/client";
+import { PrismaClient, Role } from "../../../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -20,7 +22,7 @@ const prisma = new PrismaClient({
 
 const OUTPUT_DIR = path.join(process.cwd(), "local", "test-accounts");
 
-/** 5 个固定测试账号，凭据写入 local/test-accounts（已 gitignore）。 */
+// *@localhost 与 lib/auth/validators 开发放宽规则配套，仅用于本地联调。
 const TEST_USERS = [
   {
     email: "test01@localhost",

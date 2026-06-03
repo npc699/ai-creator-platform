@@ -1,3 +1,6 @@
+// 可选种子：为 5 个测试用户各写入约 10 篇已发布文章，支撑 Feed/榜单/已发布列表联调。
+// 运行：npm run db:seed:test-posts；建议顺序：db:seed → db:seed:test-users → 本脚本 → db:backfill:feed-scores。
+// 同 userId+标题会先 deleteMany 再 create，可重复执行；质量分为模拟值，非真实 AI 审核结果。
 import "dotenv/config";
 
 import { readFile } from "node:fs/promises";
@@ -5,7 +8,12 @@ import path from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PostStatus, PrismaClient, ReviewRiskLevel, ReviewStatus } from "../lib/generated/prisma/client";
+import {
+  PostStatus,
+  PrismaClient,
+  ReviewRiskLevel,
+  ReviewStatus,
+} from "../../../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -50,10 +58,7 @@ function publishedAtFromDaysAgo(daysAgo: number) {
   return date;
 }
 
-/**
- * 为测试文章生成稳定的模拟质量分（52–92），与互动量正相关，便于验证推荐排序。
- * 接入 AI 审核前若曾手工写死分数，重跑 seed 会丢失；此处统一在种子数据里恢复。
- */
+/** 模拟质量分（52–92），与互动量对数相关；算法须与 backfill-test-post-quality 保持一致。 */
 function deriveTestQualityScore(post: SeedPost) {
   const engagement = post.likeCount * 3 + post.viewCount;
   const normalized =
@@ -72,7 +77,7 @@ function buildTestReviewFields(post: SeedPost) {
   };
 }
 
-/** 五账号各约 10 篇已发布文章（合计约 50 篇），标题固定便于重复执行时覆盖更新。 */
+// 内嵌 userId 为历史快照；优先从 accounts.json 按 label 覆盖，避免换库后 id 对不上。
 const ACCOUNT_SEEDS: AccountSeed[] = [
   {
     label: "创作者 A",

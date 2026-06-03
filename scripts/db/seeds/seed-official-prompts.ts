@@ -1,8 +1,10 @@
+// 可选种子：向管理员账号写入全站「官方」Prompt 模板（isOfficial=true），全员可见、不可删改归属。
+// 运行：npm run db:seed:official-prompts；须先 db:seed。库内已有任意官方 Prompt 则整批跳过。
 import "dotenv/config";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
-import { PrismaClient, type PromptCategory } from "../lib/generated/prisma/client";
+import { PrismaClient, type PromptCategory } from "../../../lib/generated/prisma/client";
 
 const databaseUrl = process.env.DATABASE_URL;
 

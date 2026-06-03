@@ -33,9 +33,9 @@ lib/
   auth/            Auth.js 配置与会话
   db/              Prisma、Redis 客户端
   posts/ drafts/ feed/ prompts/ assets/ ai/ review/  各业务域逻辑
-prisma/            Schema、迁移、种子与回填脚本
+prisma/            Schema、迁移与默认 seed（seed.ts）
 docs/              认证、审核规则、Feed 性能验收等文档
-scripts/           开发/运维脚本
+scripts/           开发灌数、回填与校验（scripts/db/…）
 proxy.ts           未登录路由守卫与 callbackUrl 写入
 ```
 
@@ -160,6 +160,9 @@ npm run dev
 
 | 命令 | 说明 |
 |------|------|
+| `npm run db:seed:test-users` | 创建 5 个测试用户并写入 `local/test-accounts/` |
+| `npm run db:seed:prompts` | 为各用户写入测试 Prompt（须先 `db:seed`） |
+| `npm run db:seed:official-prompts` | 写入官方 Prompt 模板（须先 `db:seed`） |
 | `npm run db:seed:test-posts` | 批量写入测试文章（依赖 `local/test-accounts/accounts.json`） |
 | `npm run db:backfill:test-quality` | 回填测试文章质量分 |
 | `npm run db:backfill:feed-scores` | 回填 Feed 预计算分数 |
