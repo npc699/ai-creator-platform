@@ -2,6 +2,7 @@
 description: Agent 编码行为准则，减少过度改动与过度设计
 alwaysApply: true
 ---
+
 # 编码行为准则
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
@@ -11,7 +12,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
 > Always respond in the same language the user writes in.
-> Project-level `CLAUDE.md` can override or relax any of these global rules.
+> Project-level rules can override or relax any of these global rules.
 
 ## 1. Think Before Coding
 
