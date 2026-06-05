@@ -1,9 +1,8 @@
+// 提示词库：scope / category / sort 由 URL 驱动，首屏 SSR 列表 + 客户端 Tab 切换。
 import { Suspense } from "react";
-
-import { ContentPanel } from "@/components/layout/content-panel";
-import { FeedPageLayout } from "@/components/layout/feed-page-layout";
-import { PanelTabNavFallback } from "@/components/layout/panel-tab-nav";
-import { PromptsPageContent } from "@/components/layout/prompts-page-content";
+import { ContentPanel } from "@/components/content-panel";
+import { PanelTabNavFallback } from "@/components/content-panel";
+import { PromptsPageContent } from "@/components/page-content";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -23,6 +22,7 @@ type PromptsPageProps = {
   }>;
 };
 
+/** 路由 `/prompts`；Suspense 包裹带 searchParams 的 Tab 导航，避免阻塞整页。 */
 export default async function PromptsPage({ searchParams }: PromptsPageProps) {
   const user = await getCurrentUser();
   const params = await searchParams;
@@ -35,6 +35,7 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
         where: buildPromptListWhere(user.id, scope, category),
         include: promptListInclude(user.id),
         orderBy: buildPromptListOrderBy(sort),
+        // 首屏上限，更多由客户端筛选/分页扩展（若后续需要）。
         take: 100,
       })
     : [];
@@ -42,17 +43,15 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
   const items = serializePromptList(prompts);
 
   return (
-    <FeedPageLayout>
-      <ContentPanel>
-        <Suspense fallback={<PanelTabNavFallback />}>
-          <PromptsPageContent
-            category={category}
-            initialPrompts={items}
-            scope={scope}
-            sort={sort}
-          />
-        </Suspense>
-      </ContentPanel>
-    </FeedPageLayout>
+    <ContentPanel>
+      <Suspense fallback={<PanelTabNavFallback />}>
+        <PromptsPageContent
+          category={category}
+          initialPrompts={items}
+          scope={scope}
+          sort={sort}
+        />
+      </Suspense>
+    </ContentPanel>
   );
 }

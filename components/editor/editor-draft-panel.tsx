@@ -7,15 +7,22 @@ import { useCallback, useEffect, useState } from "react";
 
 import { EditorDraftSwitchDialog } from "@/components/editor/editor-draft-switch-dialog";
 import { useEditorContext } from "@/components/editor/editor-context";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { clearLocalDraft, clearNewDraftLocal, getLocalDraft } from "@/lib/draft-idb";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import {
+  clearLocalDraft,
+  clearNewDraftLocal,
+  getLocalDraft,
+} from "@/lib/draft-idb";
 import { getDraftStorageKey } from "@/lib/draft-sync";
 import {
   buildEditorHref,
   EDITOR_FROM_PARAM,
 } from "@/lib/editor/editor-navigation";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";
-import { btnEditorHeaderGhost, btnEditorHeaderGhostDanger } from "@/lib/utils/brand";
+import {
+  btnEditorHeaderGhost,
+  btnEditorHeaderGhostDanger,
+} from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type DraftListItem = {
@@ -42,22 +49,16 @@ function formatDraftTime(iso: string) {
 export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const {
-    draftId,
-    isDirty,
-    saveDraft,
-    saveStatus,
-    userId,
-  } = useEditorContext();
+  const { draftId, isDirty, saveDraft, saveStatus, userId } =
+    useEditorContext();
 
   const [drafts, setDrafts] = useState<DraftListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [pendingDeleteDraft, setPendingDeleteDraft] = useState<DraftListItem | null>(
-    null
-  );
+  const [pendingDeleteDraft, setPendingDeleteDraft] =
+    useState<DraftListItem | null>(null);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
   const [isSwitchSaving, setIsSwitchSaving] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
@@ -302,7 +303,8 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
           ) : (
             <ul className="space-y-1">
               {drafts.map((draft) => {
-                const isActive = draftId === draft.id || urlDraftId === draft.id;
+                const isActive =
+                  draftId === draft.id || urlDraftId === draft.id;
                 const isDeleting = deletingId === draft.id;
 
                 return (
@@ -319,9 +321,7 @@ export function EditorDraftPanel({ onClose }: EditorDraftPanelProps) {
                         "min-w-0 flex-1 rounded-xl px-3 py-3 text-left transition-colors",
                         !isActive && "hover:bg-zinc-50"
                       )}
-                      onClick={() =>
-                        navigateTo(buildDraftEditorHref(draft.id))
-                      }
+                      onClick={() => navigateTo(buildDraftEditorHref(draft.id))}
                       type="button"
                     >
                       <p className="truncate text-sm font-medium text-zinc-900">

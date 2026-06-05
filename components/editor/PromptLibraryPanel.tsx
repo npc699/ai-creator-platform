@@ -3,8 +3,8 @@
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { PromptCard } from "@/components/layout/prompt-card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PromptCard } from "@/components/prompts";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import {
   PROMPT_CATEGORY_OPTIONS,
   type PromptCategory,
@@ -28,7 +28,11 @@ import {
   updateEditorPrompt,
   useEditorPrompt,
 } from "@/lib/editor/prompts-api";
-import { btnEditorHeaderGhost, btnPrimary, btnPrimaryDisabled } from "@/lib/utils/brand";
+import {
+  btnEditorHeaderGhost,
+  btnPrimary,
+  btnPrimaryDisabled,
+} from "@/lib/utils/brand";
 import { cn } from "@/lib/utils";
 
 type PromptLibraryPanelProps = {
@@ -79,7 +83,9 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
+    null
+  );
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
@@ -90,10 +96,10 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
     void (async () => {
       try {
         const entries = await Promise.all(
-          EDITOR_PROMPT_SCOPES.map(async (scopeKey) => [
-            scopeKey,
-            await fetchEditorPrompts(scopeKey),
-          ] as const)
+          EDITOR_PROMPT_SCOPES.map(
+            async (scopeKey) =>
+              [scopeKey, await fetchEditorPrompts(scopeKey)] as const
+          )
         );
 
         if (cancelled) {
@@ -247,7 +253,9 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
       setLists((current) => ({
         ...current,
         favorite: current.favorite.map((item) =>
-          item.id === prompt.id ? { ...item, isFavorite: prompt.isFavorite } : item
+          item.id === prompt.id
+            ? { ...item, isFavorite: prompt.isFavorite }
+            : item
         ),
       }));
     },
@@ -368,7 +376,9 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
               placeholder="Prompt 内容"
               value={content}
             />
-            {formError ? <p className="text-xs text-red-600">{formError}</p> : null}
+            {formError ? (
+              <p className="text-xs text-red-600">{formError}</p>
+            ) : null}
             <div className="flex gap-2">
               <button
                 className="flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-700"
@@ -378,7 +388,11 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
                 取消
               </button>
               <button
-                className={cn(btnPrimary, btnPrimaryDisabled, "flex-1 px-3 py-2")}
+                className={cn(
+                  btnPrimary,
+                  btnPrimaryDisabled,
+                  "flex-1 px-3 py-2"
+                )}
                 disabled={isSaving}
                 onClick={() => void handleSave()}
                 type="button"
@@ -395,7 +409,9 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
           {isInitialLoading ? (
             <p className="py-6 text-center text-xs text-zinc-400">加载中…</p>
           ) : visiblePrompts.length === 0 ? (
-            <p className="py-6 text-center text-xs text-zinc-400">{emptyMessage}</p>
+            <p className="py-6 text-center text-xs text-zinc-400">
+              {emptyMessage}
+            </p>
           ) : (
             <div className="space-y-2">
               {visiblePrompts.map((prompt) => (
@@ -408,7 +424,10 @@ export function PromptLibraryPanel({ onApplyPrompt }: PromptLibraryPanelProps) {
                     scope === "mine"
                       ? () => {
                           setDeleteError(null);
-                          setPendingDelete({ id: prompt.id, title: prompt.title });
+                          setPendingDelete({
+                            id: prompt.id,
+                            title: prompt.title,
+                          });
                         }
                       : undefined
                   }

@@ -1,12 +1,13 @@
-import { ContentPanel } from "@/components/layout/content-panel";
-import { DraftsPageContent } from "@/components/layout/drafts-page-content";
-import { FeedPageLayout } from "@/components/layout/feed-page-layout";
+// 草稿箱：列出当前用户草稿，点击进入编辑器继续创作。
+import { ContentPanel } from "@/components/content-panel";
+import { DraftsPageContent } from "@/components/page-content";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { buildDraftListWhere } from "@/lib/drafts/query";
 import { mapDraftToFeedItem } from "@/lib/drafts/feed-item";
 import { getAuthorLabel } from "@/lib/posts/feed-item";
 
+/** 路由 `/drafts`；列表项映射为 Feed 卡片格式供 DraftsPageContent 渲染与删除。 */
 export default async function DraftsPage() {
   const user = await getCurrentUser();
 
@@ -33,10 +34,8 @@ export default async function DraftsPage() {
   );
 
   return (
-    <FeedPageLayout>
-      <ContentPanel>
-        <DraftsPageContent items={feedItems} userId={user?.id} />
-      </ContentPanel>
-    </FeedPageLayout>
+    <ContentPanel>
+      <DraftsPageContent items={feedItems} userId={user?.id} />
+    </ContentPanel>
   );
 }
