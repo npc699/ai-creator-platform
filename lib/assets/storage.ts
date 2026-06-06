@@ -7,7 +7,7 @@ import path from "node:path";
 import {
   buildUploadPublicUrl as buildPublicUrl,
   isLocalUploadUrl,
-} from "@/lib/assets/public-url";
+} from "./public-url";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",

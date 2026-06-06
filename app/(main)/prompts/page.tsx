@@ -1,20 +1,20 @@
 // 提示词库：scope / category / sort 由 URL 驱动，首屏 SSR 列表 + 客户端 Tab 切换。
 import { Suspense } from "react";
-import { ContentPanel } from "@/components/content-panel";
-import { PanelTabNavFallback } from "@/components/content-panel";
-import { PromptsPageContent } from "@/components/page-content";
+
+import { PromptsPage } from "@/components/pages";
+import { ContentPanel, PanelTabNavFallback } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   parsePromptCategory,
   parsePromptScope,
   parsePromptSort,
-} from "@/lib/feed/panel-params";
+} from "@/lib/prompts/panel-params";
 import { buildPromptListWhere, promptListInclude } from "@/lib/prompts/list";
 import { buildPromptListOrderBy } from "@/lib/prompts/query";
 import { serializePromptList } from "@/lib/prompts/serialize";
 
-type PromptsPageProps = {
+type PromptsRouteProps = {
   searchParams: Promise<{
     scope?: string;
     category?: string;
@@ -23,7 +23,7 @@ type PromptsPageProps = {
 };
 
 /** 路由 `/prompts`；Suspense 包裹带 searchParams 的 Tab 导航，避免阻塞整页。 */
-export default async function PromptsPage({ searchParams }: PromptsPageProps) {
+export default async function PromptsRoute({ searchParams }: PromptsRouteProps) {
   const user = await getCurrentUser();
   const params = await searchParams;
   const scope = parsePromptScope(params.scope ?? null);
@@ -35,7 +35,6 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
         where: buildPromptListWhere(user.id, scope, category),
         include: promptListInclude(user.id),
         orderBy: buildPromptListOrderBy(sort),
-        // 首屏上限，更多由客户端筛选/分页扩展（若后续需要）。
         take: 100,
       })
     : [];
@@ -45,7 +44,7 @@ export default async function PromptsPage({ searchParams }: PromptsPageProps) {
   return (
     <ContentPanel>
       <Suspense fallback={<PanelTabNavFallback />}>
-        <PromptsPageContent
+        <PromptsPage
           category={category}
           initialPrompts={items}
           scope={scope}

@@ -1,5 +1,6 @@
 import { PostStatus, type Prisma } from "@/lib/generated/prisma/client";
-import type { PublishedFilter } from "@/lib/feed/panel-params";
+
+import type { PublishedFilter } from "./panel-params";
 
 /** 已发布页列表查询条件：全部含上线与下线，其余 Tab 按状态或排序维度筛选。 */
 export function buildPublishedListWhere(

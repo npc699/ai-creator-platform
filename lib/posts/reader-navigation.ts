@@ -2,7 +2,7 @@ import {
   EDITOR_FROM_PARAM,
   sanitizeReturnPath,
   type EditorBackTarget,
-} from "@/lib/editor/editor-navigation";
+} from "@/lib/editor/navigation";
 
 export { EDITOR_FROM_PARAM as READER_FROM_PARAM };
 

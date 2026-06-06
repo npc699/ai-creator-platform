@@ -4,7 +4,7 @@ import {
   ArkConfigError,
   ArkUpstreamError,
   getArkBaseConfig,
-} from "@/lib/ai/ark-config";
+} from "./ark-config";
 
 export type ArkChatMessage = {
   role: "system" | "user" | "assistant";
@@ -38,7 +38,7 @@ type ArkChatCompletion = {
   }>;
 };
 
-export { ArkConfigError, ArkUpstreamError } from "@/lib/ai/ark-config";
+export { ArkConfigError, ArkUpstreamError } from "./ark-config";
 
 function getArkChatConfig() {
   const base = getArkBaseConfig();

@@ -4,10 +4,10 @@ import { Pencil, Trash2, X, ZoomIn } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useState, type KeyboardEvent } from "react";
 
-import { assetLibraryCopy } from "@/components/editor/asset-library-copy";
-import { ConfirmDialog } from "@/components/confirm-dialog";
+import { assetLibraryCopy } from "@/components/media";
+import { ConfirmDialog } from "@/components/ui";
 import { isImageAsset } from "@/lib/assets/mime";
-import { deleteEditorAsset, renameEditorAsset } from "@/lib/editor/assets-api";
+import { deleteEditorAsset, renameEditorAsset } from "@/lib/client/assets/api";
 import { cn } from "@/lib/utils";
 
 export type AssetListItem = {

@@ -2,14 +2,10 @@
 
 import { useSearchParams } from "next/navigation";
 
-import { PanelTabNav } from "@/components/content-panel";
-import {
-  buildFeedSortOptions,
-  parseFeedChannel,
-  parseFeedSort,
-} from "@/lib/feed/panel-params";
+import { PanelTabNav } from "@/components/ui";
+import { buildFeedSortOptions, parseFeedChannel, parseFeedSort } from "@/lib/feed/params";
 
-/** 首页 Feed 顶部排序 Tab。 */
+/** ?? Feed ???? Tab? */
 export function FeedSortNav() {
   const searchParams = useSearchParams();
   const sort = parseFeedSort(searchParams.get("sort"));
@@ -18,7 +14,7 @@ export function FeedSortNav() {
   return (
     <PanelTabNav
       activeKey={sort}
-      ariaLabel="内容筛选"
+      ariaLabel="????"
       options={buildFeedSortOptions(channel)}
     />
   );

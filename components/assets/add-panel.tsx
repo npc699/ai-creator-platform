@@ -19,23 +19,23 @@ import {
 } from "lucide-react";
 
 import {
-  AssetLibraryAccordion,
-  AssetLibraryValidationStatus,
-} from "@/components/editor/asset-library-accordion";
-import { assetLibraryCopy } from "@/components/editor/asset-library-copy";
-import { ImageResolutionPicker } from "@/components/editor/ImageResolutionPicker";
-import { useAiImageGenerate } from "@/components/editor/use-ai-image-generate";
+  assetLibraryCopy,
+  MediaAccordion,
+  MediaValidationStatus,
+  MediaResolutionPicker,
+  useAiImageGenerate,
+} from "@/components/media";
 import {
   registerAiImageAsset,
   uploadLocalImageAsset,
   type EditorAsset,
-} from "@/lib/editor/assets-api";
+} from "@/lib/client/assets/api";
 import {
   formatLocalImageSize,
   LOCAL_IMAGE_ACCEPT,
   LOCAL_IMAGE_MAX_BYTES,
   validateLocalImageFile,
-} from "@/lib/editor/local-image";
+} from "@/lib/editor/image/local-image";
 import { cn } from "@/lib/utils";
 import { btnPrimary, btnPrimaryDisabled } from "@/lib/utils/brand";
 import type { AiImageSize } from "@/lib/ai/image-schema";
@@ -335,7 +335,7 @@ export function AssetAddPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         <div className="space-y-2">
-          <AssetLibraryAccordion
+          <MediaAccordion
             expanded={expanded.upload}
             icon={Upload}
             onToggle={() => toggleSection("upload")}
@@ -393,16 +393,16 @@ export function AssetAddPanel({
 
             {uploadValidation ? (
               <div className="mt-3 space-y-2">
-                <AssetLibraryValidationStatus
+                <MediaValidationStatus
                   message={uploadValidation.formatMessage}
                   ok={uploadValidation.formatOk}
                 />
-                <AssetLibraryValidationStatus
+                <MediaValidationStatus
                   message={uploadValidation.sizeMessage}
                   ok={uploadValidation.sizeOk}
                 />
                 {uploadValidation.errorMessage ? (
-                  <AssetLibraryValidationStatus
+                  <MediaValidationStatus
                     message={uploadValidation.errorMessage}
                     ok={false}
                   />
@@ -453,9 +453,9 @@ export function AssetAddPanel({
                 </div>
               </>
             ) : null}
-          </AssetLibraryAccordion>
+          </MediaAccordion>
 
-          <AssetLibraryAccordion
+          <MediaAccordion
             expanded={expanded.ai}
             icon={Sparkles}
             onToggle={() => toggleSection("ai")}
@@ -483,7 +483,7 @@ export function AssetAddPanel({
             </label>
 
             <div className="mt-3">
-              <ImageResolutionPicker
+              <MediaResolutionPicker
                 disabled={isGenerating}
                 onChange={setSize}
                 value={size}
@@ -574,7 +574,7 @@ export function AssetAddPanel({
                 </button>
               </div>
             ) : null}
-          </AssetLibraryAccordion>
+          </MediaAccordion>
         </div>
       </div>
     </aside>

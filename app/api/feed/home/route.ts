@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { buildHomeQuery, parseFeedChannel, parseFeedSort } from "@/lib/feed/params";
-import { fetchHomeFeedPage } from "@/lib/posts/home-feed-query";
+import { fetchHomeFeedPage } from "@/lib/feed/home/query";
 
 export const runtime = "nodejs";
 

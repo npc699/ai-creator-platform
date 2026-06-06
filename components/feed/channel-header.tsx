@@ -1,6 +1,6 @@
 import { Flame, TrendingUp } from "lucide-react";
 
-import { PanelSectionHeader } from "@/components/content-panel";
+import { PanelSectionHeader } from "@/components/ui";
 import { CHANNEL_META, type FeedChannel } from "@/lib/feed/params";
 
 type ChannelFeedHeaderProps = {

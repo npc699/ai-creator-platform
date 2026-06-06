@@ -4,8 +4,8 @@
 import { getToken } from "next-auth/jwt";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getSafeCallbackPath } from "@/lib/auth/safe-callback-url";
-import { findActiveUserById } from "@/lib/auth/session-user";
+import { findActiveUserById } from "@/lib/auth";
+import { getSafeCallbackPath } from "@/lib/auth/client";
 
 // 访客可访问的页面白名单；其余路径默认需登录。
 const authRoutes = new Set(["/login", "/register"]);

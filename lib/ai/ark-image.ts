@@ -4,8 +4,8 @@ import {
   ArkConfigError,
   ArkUpstreamError,
   getArkBaseConfig,
-} from "@/lib/ai/ark-config";
-import type { AiImageSize } from "@/lib/ai/image-schema";
+} from "./ark-config";
+import type { AiImageSize } from "./image-schema";
 
 const IMAGE_GENERATION_TIMEOUT_MS = 120_000;
 

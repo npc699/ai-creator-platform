@@ -2,7 +2,7 @@ import {
   EDITOR_FROM_PARAM,
   sanitizeReturnPath,
   type EditorBackTarget,
-} from "@/lib/editor/editor-navigation";
+} from "@/lib/editor/navigation";
 
 /** 发布者主页链接，携带来源路径供顶栏「返回」使用。 */
 export function buildAuthorProfileHref(

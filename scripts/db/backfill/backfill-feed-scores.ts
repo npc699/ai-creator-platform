@@ -1,8 +1,8 @@
-// 运维回填：调用 lib/feed/refresh-scores 刷新近 7 天文章的 hotScore/viralScore（与 Cron 同逻辑）。
+// 运维回填：调用 lib/feed/scores/refresh 刷新近 7 天文章的 hotScore/viralScore（与 Cron 同逻辑）。
 // 运行：npm run db:backfill:feed-scores；seed 测试文后建议执行，否则榜单排序可能全为 0。
 import "dotenv/config";
 
-import { refreshFeedScores } from "../../../lib/feed/refresh-scores";
+import { refreshFeedScores } from "../../../lib/feed/scores/refresh";
 
 async function main() {
   const result = await refreshFeedScores();

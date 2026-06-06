@@ -1,5 +1,5 @@
 import { buildFeedListExcerpt } from "@/lib/posts/excerpt";
-import type { FeedArticleItem } from "@/lib/feed/types";
+import type { FeedArticleItem } from "@/lib/posts/list-types";
 import { formatPublishedTime, getAuthorLabel } from "@/lib/posts/feed-item";
 
 export { getAuthorLabel, formatPublishedTime };

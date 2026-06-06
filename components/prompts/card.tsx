@@ -3,7 +3,7 @@
 import { Copy, Pencil, Star, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
 
-import { toggleEditorPromptFavorite } from "@/lib/editor/prompts-api";
+import { toggleEditorPromptFavorite } from "@/lib/client/prompts/api";
 import { getPromptCategoryLabel } from "@/lib/prompts/category";
 import type { SerializedPrompt } from "@/lib/prompts/serialize";
 import { buildPostExcerpt } from "@/lib/posts/excerpt";

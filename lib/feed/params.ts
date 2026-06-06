@@ -60,3 +60,13 @@ export function buildHomeQuery(options: {
   return query ? `/?${query}` : "/";
 }
 
+/** 供 FeedSortNav 组装首页排序链接。 */
+export function buildFeedSortOptions(
+  channel: ReturnType<typeof parseFeedChannel>
+) {
+  return FEED_SORT_OPTIONS.map(({ sort, label }) => ({
+    key: sort,
+    label,
+    href: buildHomeQuery({ channel, sort }),
+  }));
+}

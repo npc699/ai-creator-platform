@@ -1,6 +1,6 @@
 import type { Prompt } from "@/lib/generated/prisma/client";
-import { prismaCategoryToSlug, type PromptCategorySlug } from "@/lib/prompts/category";
-import type { PromptListRecord } from "@/lib/prompts/list";
+import { prismaCategoryToSlug, type PromptCategorySlug } from "./category";
+import type { PromptListRecord } from "./list";
 
 export type SerializedPrompt = {
   id: string;

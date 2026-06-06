@@ -1,7 +1,7 @@
 // 文章阅读页：作者可预览未发布/审核中内容；访客仅可见已发布文章。
 import { notFound } from "next/navigation";
-import { ContentPanel } from "@/components/content-panel";
-import { PostReaderArticle, PostReaderHeader } from "@/components/post";
+import { ContentPanel } from "@/components/ui";
+import { ReaderArticleMeta, ReaderHeader } from "@/components/reader";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -127,7 +127,7 @@ export default async function PostPage({
   return (
     <ContentPanel
       header={
-        <PostReaderHeader
+        <ReaderHeader
           backHref={backTarget.href}
           backLabel={backTarget.label}
           isAuthor={isAuthor}
@@ -137,7 +137,7 @@ export default async function PostPage({
       }
     >
       <article className="mx-auto w-full max-w-3xl px-6 pb-8 pt-10">
-        <PostReaderArticle
+        <ReaderArticleMeta
           authorId={post.userId}
           authorImage={post.user.image}
           authorName={getAuthorLabel(post.user)}
