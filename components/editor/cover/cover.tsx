@@ -12,7 +12,7 @@ import {
   useAiImageGenerate,
 } from "@/components/media";
 import { fetchEditorAssets, type EditorAsset } from "@/lib/client/assets/api";
-import { isLocalUploadUrl } from "@/lib/assets/public-url";
+import { isPlatformUploadUrl } from "@/lib/assets/public-url";
 import {
   formatLocalImageSize,
   LOCAL_IMAGE_ACCEPT,
@@ -145,7 +145,7 @@ function EditorCoverDialog({ onClose }: EditorCoverDialogProps) {
     try {
       let finalUrl = url;
       // AI 临时外链仅落盘到 uploads，不入素材库。
-      if (!isLocalUploadUrl(url)) {
+      if (!isPlatformUploadUrl(url)) {
         setIsSavingCover(true);
         const saved = await persistRemoteEditorImage(url);
         finalUrl = saved.url;
@@ -168,7 +168,7 @@ function EditorCoverDialog({ onClose }: EditorCoverDialogProps) {
 
     try {
       const list = await fetchEditorAssets();
-      setAssets(list.filter((item) => item.url.startsWith("/uploads/")));
+      setAssets(list.filter((item) => isPlatformUploadUrl(item.url)));
     } catch {
       setAssetsError("加载素材失败");
     } finally {

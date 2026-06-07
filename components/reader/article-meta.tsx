@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ArticleMetaBadges, useArticleLikeToggle } from "@/components/article";
-import { AuthorAvatar } from "@/components/author";
+import { AuthorAvatar } from "@/components/author/avatar";
 import { formatFeedMetric } from "@/lib/feed/format";
 import { buildAuthorProfileHref } from "@/lib/users/profile-navigation";
 import { cn } from "@/lib/utils";

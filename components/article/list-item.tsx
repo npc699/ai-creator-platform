@@ -9,7 +9,7 @@ import { ArticleListCover } from "./cover";
 import { saveListScrollPosition } from "./list-scroll";
 import type { ArticleListItemProps } from "./types";
 import { useArticleLikeToggle } from "./use-article-like";
-import { AuthorProfileLink } from "@/components/author";
+import { AuthorProfileLink } from "@/components/author/profile-link";
 import { formatFeedMetric } from "@/lib/feed/format";
 import { cn } from "@/lib/utils";
 import { badgeArticleTag } from "@/lib/utils/brand";

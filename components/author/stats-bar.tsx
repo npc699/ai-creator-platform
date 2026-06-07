@@ -1,4 +1,4 @@
-import { formatCreatorStatCount } from "@/lib/users";
+import { formatCreatorStatCount } from "@/lib/users/format-creator-stats";
 import type { PublicAuthorStats } from "@/lib/users/author-profile";
 
 type AuthorProfileStatsBarProps = {

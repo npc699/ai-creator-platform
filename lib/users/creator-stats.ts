@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { unpublishedDraftWhere } from "@/lib/drafts/query";
 import { PostStatus } from "@/lib/generated/prisma/client";
+import { formatCreatorStatCount } from "@/lib/users/format-creator-stats";
 
 /** 创作者「已发布」口径：含已上线与已下线，与已发布页、右侧边栏一致。 */
 export const CREATOR_PUBLISHED_POST_STATUSES = [
@@ -20,14 +21,6 @@ export type CreatorSidebarStats = {
   draftCount: number;
   totalViews: string;
 };
-
-/** 创作者统计数字展示（与右侧边栏一致，≥1 万用「万」）。 */
-export function formatCreatorStatCount(count: number): string {
-  if (count >= 10_000) {
-    return `${(count / 10_000).toFixed(1).replace(/\.0$/, "")}万`;
-  }
-  return count.toLocaleString("zh-CN");
-}
 
 /** 创作者文章与互动汇总（已发布含下线稿）。 */
 export async function getCreatorStats(userId: string): Promise<CreatorStats> {

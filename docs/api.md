@@ -10,10 +10,10 @@
 
 ### 基础 URL
 
-| 环境 | Base URL |
-|------|----------|
-| 本地开发 | `http://localhost:3000` |
-| 生产 | 以部署域名 + `NEXTAUTH_URL` 为准 |
+| 环境     | Base URL                         |
+| -------- | -------------------------------- |
+| 本地开发 | `http://localhost:3000`          |
+| 生产     | 以部署域名 + `NEXTAUTH_URL` 为准 |
 
 ### 请求格式
 
@@ -25,12 +25,12 @@
 
 项目使用 **Auth.js v5（JWT 会话）**。登录成功后浏览器会持有会话 Cookie。
 
-| 标记 | 说明 |
-|------|------|
-| 公开 | 无需登录 |
-| 可选登录 | 未登录可访问，登录后返回个性化字段 |
-| 需登录 | 必须携带有效会话 Cookie，否则 `401` |
-| Cron | 需 `Authorization: Bearer <CRON_SECRET>`（生产环境建议配置） |
+| 标记     | 说明                                                         |
+| -------- | ------------------------------------------------------------ |
+| 公开     | 无需登录                                                     |
+| 可选登录 | 未登录可访问，登录后返回个性化字段                           |
+| 需登录   | 必须携带有效会话 Cookie，否则 `401`                          |
+| Cron     | 需 `Authorization: Bearer <CRON_SECRET>`（生产环境建议配置） |
 
 **调用需登录接口的方式：**
 
@@ -47,16 +47,16 @@
 
 常见 HTTP 状态码：
 
-| 状态码 | 含义 |
-|--------|------|
-| `400` | 参数校验失败、业务规则不满足 |
-| `401` | 未登录或 Cron 鉴权失败 |
-| `403` | 已登录但无权访问资源 |
-| `404` | 资源不存在 |
-| `409` | 冲突（如邮箱已注册、审核无需重试） |
-| `422` | 内容审核未通过（附带 `reviewResult`） |
-| `499` | 客户端取消请求（AI 生图） |
-| `500` / `502` / `503` | 服务端或上游依赖异常 |
+| 状态码                | 含义                                  |
+| --------------------- | ------------------------------------- |
+| `400`                 | 参数校验失败、业务规则不满足          |
+| `401`                 | 未登录或 Cron 鉴权失败                |
+| `403`                 | 已登录但无权访问资源                  |
+| `404`                 | 资源不存在                            |
+| `409`                 | 冲突（如邮箱已注册、审核无需重试）    |
+| `422`                 | 内容审核未通过（附带 `reviewResult`） |
+| `499`                 | 客户端取消请求（AI 生图）             |
+| `500` / `502` / `503` | 服务端或上游依赖异常                  |
 
 ---
 
@@ -92,19 +92,19 @@
 
 由 Auth.js 自动提供，常用端点包括：
 
-| 端点 | 说明 |
-|------|------|
-| `GET/POST /api/auth/signin` | 登录页（自定义为 `/login`） |
-| `GET/POST /api/auth/signout` | 退出登录，清除会话 Cookie |
-| `GET /api/auth/session` | 获取当前会话 |
-| `POST /api/auth/callback/credentials` | Credentials 登录回调 |
+| 端点                                  | 说明                        |
+| ------------------------------------- | --------------------------- |
+| `GET/POST /api/auth/signin`           | 登录页（自定义为 `/login`） |
+| `GET/POST /api/auth/signout`          | 退出登录，清除会话 Cookie   |
+| `GET /api/auth/session`               | 获取当前会话                |
+| `POST /api/auth/callback/credentials` | Credentials 登录回调        |
 
 **登录凭据（Credentials Provider）：**
 
-| 字段 | 类型 | 约束 |
-|------|------|------|
+| 字段         | 类型   | 约束                   |
+| ------------ | ------ | ---------------------- |
 | `identifier` | string | 邮箱或大陆 11 位手机号 |
-| `password` | string | 至少 6 位 |
+| `password`   | string | 至少 6 位              |
 
 前端通常通过 Auth.js 客户端 `signIn("credentials", { identifier, password })` 调用，而非直接构造 HTTP 请求。
 
@@ -114,12 +114,12 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `name` | string | ✅ | 1–20 字 |
-| `email` | string | 二选一 | 有效邮箱；可与 `phone` 同时填写 |
-| `phone` | string | 二选一 | 大陆 11 位手机号 |
-| `password` | string | ✅ | 6–32 位 |
+| 字段       | 类型   | 必填   | 约束                            |
+| ---------- | ------ | ------ | ------------------------------- |
+| `name`     | string | ✅     | 1–20 字                         |
+| `email`    | string | 二选一 | 有效邮箱；可与 `phone` 同时填写 |
+| `phone`    | string | 二选一 | 大陆 11 位手机号                |
+| `password` | string | ✅     | 6–32 位                         |
 
 > `email` 与 `phone` 至少填一项。
 
@@ -151,10 +151,10 @@
 
 **请求体（至少一项）：**
 
-| 字段 | 类型 | 约束 |
-|------|------|------|
-| `name` | string \| null | 最多 50 字；空字符串视为 `null` |
-| `bio` | string \| null | 最多 500 字；空字符串视为 `null` |
+| 字段   | 类型           | 约束                             |
+| ------ | -------------- | -------------------------------- |
+| `name` | string \| null | 最多 50 字；空字符串视为 `null`  |
+| `bio`  | string \| null | 最多 500 字；空字符串视为 `null` |
 
 **成功 `200`：**
 
@@ -199,13 +199,13 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `title` | string | — | 最多 100 字；空则默认为「未命名草稿」 |
-| `content` | string | ✅ | HTML 正文，最大 1MB |
-| `promptId` | string \| null | — | 须为本人或官方 Prompt |
-| `tags` | string[] | — | 最多 8 个，单个最多 20 字 |
-| `coverUrl` | string \| null | — | 须为本站 `/uploads` 路径 |
+| 字段       | 类型           | 必填 | 约束                                  |
+| ---------- | -------------- | ---- | ------------------------------------- |
+| `title`    | string         | —    | 最多 100 字；空则默认为「未命名草稿」 |
+| `content`  | string         | ✅   | HTML 正文，最大 1MB                   |
+| `promptId` | string \| null | —    | 须为本人或官方 Prompt                 |
+| `tags`     | string[]       | —    | 最多 8 个，单个最多 20 字             |
+| `coverUrl` | string \| null | —    | 须为本站 `/uploads` 路径              |
 
 **成功 `200`：**
 
@@ -288,8 +288,8 @@
 
 **Query 参数：**
 
-| 参数 | 类型 | 默认 | 说明 |
-|------|------|------|------|
+| 参数     | 类型   | 默认        | 说明                               |
+| -------- | ------ | ----------- | ---------------------------------- |
 | `status` | string | `PUBLISHED` | `PUBLISHED` · `DRAFT` · `ARCHIVED` |
 
 **成功 `200`：**
@@ -317,14 +317,14 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `title` | string | ✅ | 1–100 字 |
-| `content` | string | ✅ | HTML 正文，最大 1MB，去标签后非空 |
-| `draftId` | string \| null | — | 关联草稿 ID，须为本人且未发布 |
-| `promptId` | string \| null | — | 须为本人或官方 Prompt |
-| `tags` | string[] | — | 最多 8 个，单个最多 20 字 |
-| `coverUrl` | string \| null | — | 须为本站 `/uploads` 路径 |
+| 字段       | 类型           | 必填 | 约束                              |
+| ---------- | -------------- | ---- | --------------------------------- |
+| `title`    | string         | ✅   | 1–100 字                          |
+| `content`  | string         | ✅   | HTML 正文，最大 1MB，去标签后非空 |
+| `draftId`  | string \| null | —    | 关联草稿 ID，须为本人且未发布     |
+| `promptId` | string \| null | —    | 须为本人或官方 Prompt             |
+| `tags`     | string[]       | —    | 最多 8 个，单个最多 20 字         |
+| `coverUrl` | string \| null | —    | 须为本站 `/uploads` 路径          |
 
 **成功 `200`：**
 
@@ -384,8 +384,8 @@
 
 **请求体：**
 
-| 字段 | 类型 |
-|------|------|
+| 字段       | 类型           |
+| ---------- | -------------- |
 | `promptId` | string \| null |
 
 ### `PATCH /api/posts/{id}`
@@ -396,8 +396,8 @@
 
 **请求体：**
 
-| 字段 | 类型 | 取值 |
-|------|------|------|
+| 字段     | 类型   | 取值                     |
+| -------- | ------ | ------------------------ |
 | `status` | string | `PUBLISHED` · `ARCHIVED` |
 
 **成功 `200`：** `{ "post": { ... }, "reviewResult": null | {...} }`
@@ -484,14 +484,14 @@
 
 **Query 参数：**
 
-| 参数 | 类型 | 默认 | 说明 |
-|------|------|------|------|
-| `channel` | string | — | `hot` 热点榜 · `viral` 爆文榜；省略为首页推荐 |
-| `sort` | string | `recommend` | `recommend` · `latest` · `likes` · `views` |
-| `topic` | string | — | 话题筛选 |
-| `cursor` | string | — | 分页游标（上一页响应的 `nextCursor`） |
-| `limit` | number | — | 每页条数 |
-| `returnPath` | string | — | 文章详情回跳路径 |
+| 参数         | 类型   | 默认        | 说明                                          |
+| ------------ | ------ | ----------- | --------------------------------------------- |
+| `channel`    | string | —           | `hot` 热点榜 · `viral` 爆文榜；省略为首页推荐 |
+| `sort`       | string | `recommend` | `recommend` · `latest` · `likes` · `views`    |
+| `topic`      | string | —           | 话题筛选                                      |
+| `cursor`     | string | —           | 分页游标（上一页响应的 `nextCursor`）         |
+| `limit`      | number | —           | 每页条数                                      |
+| `returnPath` | string | —           | 文章详情回跳路径                              |
 
 **成功 `200`：**
 
@@ -530,15 +530,15 @@
 
 ### Prompt 分类 slug
 
-| slug | 中文名 |
-|------|--------|
-| `long-form` | 长文写作 |
-| `short-post` | 短图文 |
-| `seeding` | 种草内容 |
+| slug             | 中文名   |
+| ---------------- | -------- |
+| `long-form`      | 长文写作 |
+| `short-post`     | 短图文   |
+| `seeding`        | 种草内容 |
 | `product-review` | 产品测评 |
-| `industry` | 行业分析 |
-| `title-gen` | 标题生成 |
-| `rewrite` | 改写润色 |
+| `industry`       | 行业分析 |
+| `title-gen`      | 标题生成 |
+| `rewrite`        | 改写润色 |
 
 ### `GET /api/prompts`
 
@@ -546,8 +546,8 @@
 
 **Query 参数：**
 
-| 参数 | 类型 | 默认 | 说明 |
-|------|------|------|------|
+| 参数    | 类型   | 默认   | 说明                          |
+| ------- | ------ | ------ | ----------------------------- |
 | `scope` | string | `mine` | `mine` 我的 · `favorite` 收藏 |
 
 **成功 `200`：** `{ "prompts": [ SerializedPrompt ] }`
@@ -558,11 +558,11 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `title` | string | ✅ | 1–100 字 |
-| `content` | string | ✅ | 最大 1MB |
-| `category` | string | — | 分类 slug，默认 `long-form` |
+| 字段       | 类型   | 必填 | 约束                        |
+| ---------- | ------ | ---- | --------------------------- |
+| `title`    | string | ✅   | 1–100 字                    |
+| `content`  | string | ✅   | 最大 1MB                    |
+| `category` | string | —    | 分类 slug，默认 `long-form` |
 
 **成功 `200`：** `{ "prompt": SerializedPrompt }`
 
@@ -578,11 +578,11 @@
 
 **请求体（至少一项）：**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 1–100 字 |
-| `content` | string | 最大 1MB |
-| `category` | string | 分类 slug |
+| 字段         | 类型    | 说明                               |
+| ------------ | ------- | ---------------------------------- |
+| `title`      | string  | 1–100 字                           |
+| `content`    | string  | 最大 1MB                           |
+| `category`   | string  | 分类 slug                          |
 | `isFavorite` | boolean | 收藏标记；官方 Prompt 仅允许改此项 |
 
 **说明：** 官方 Prompt 内容不可修改，仅可切换收藏。
@@ -635,17 +635,17 @@
 
 **方式 A — 本地上传（multipart/form-data）：**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
+| 字段   | 类型 | 说明                             |
+| ------ | ---- | -------------------------------- |
 | `file` | File | JPG / PNG / WebP / GIF，最大 5MB |
 
 **方式 B — 注册 AI 外链（application/json）：**
 
-| 字段 | 类型 | 约束 |
-|------|------|------|
-| `name` | string | 1–200 字 |
-| `url` | string | 有效 URL（AI 临时图片） |
-| `source` | string | 固定 `"AI"` |
+| 字段     | 类型   | 约束                    |
+| -------- | ------ | ----------------------- |
+| `name`   | string | 1–200 字                |
+| `url`    | string | 有效 URL（AI 临时图片） |
+| `source` | string | 固定 `"AI"`             |
 
 **成功 `200`：** `{ "asset": SerializedAsset }`
 
@@ -672,8 +672,8 @@
 
 **请求体：**
 
-| 字段 | 类型 | 约束 |
-|------|------|------|
+| 字段   | 类型   | 约束     |
+| ------ | ------ | -------- |
 | `name` | string | 1–200 字 |
 
 ### `DELETE /api/assets/{id}`
@@ -723,11 +723,11 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `mode` | string | ✅ | `generate` · `selection` · `polish` · `expand` · `shrink` |
-| `keyword` | string | 条件 | `generate` / `selection` 模式必填，最多 1000 字 |
-| `context` | string | 条件 | 非 `generate` 模式必填（选中片段），最多 8000 字 |
+| 字段      | 类型   | 必填 | 约束                                                      |
+| --------- | ------ | ---- | --------------------------------------------------------- |
+| `mode`    | string | ✅   | `generate` · `selection` · `polish` · `expand` · `shrink` |
+| `keyword` | string | 条件 | `generate` / `selection` 模式必填，最多 1000 字           |
+| `context` | string | 条件 | 非 `generate` 模式必填（选中片段），最多 8000 字          |
 
 **响应：** `Content-Type: application/x-ndjson; charset=utf-8`
 
@@ -745,10 +745,10 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `prompt` | string | ✅ | 1–500 字 |
-| `size` | string | — | `2K` · `3K` · `4K`，默认 `2K` |
+| 字段     | 类型   | 必填 | 约束                          |
+| -------- | ------ | ---- | ----------------------------- |
+| `prompt` | string | ✅   | 1–500 字                      |
+| `size`   | string | —    | `2K` · `3K` · `4K`，默认 `2K` |
 
 **成功 `200`：**
 
@@ -800,10 +800,10 @@
 }
 ```
 
-| 字段 | 说明 |
-|------|------|
-| `status` | `PENDING` · `PASSED` · `REJECTED` |
-| `safety.riskLevel` | `high` · `medium` · `low` · `none` |
+| 字段                | 说明                                 |
+| ------------------- | ------------------------------------ |
+| `status`            | `PENDING` · `PASSED` · `REJECTED`    |
+| `safety.riskLevel`  | `high` · `medium` · `low` · `none`   |
 | `safety.categories` | 违规类别英文枚举，见 review-rules.md |
 
 ### `POST /api/review/content`
@@ -814,13 +814,13 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 | 约束 |
-|------|------|------|------|
-| `title` | string | ✅ | 1–100 字 |
-| `content` | string | ✅ | 最大 1MB |
-| `postId` | string \| null | — | 关联文章（须为本人） |
-| `draftId` | string \| null | — | 关联草稿（须为本人） |
-| `tags` | string[] | — | 优先于 post 已有 tags |
+| 字段      | 类型           | 必填 | 约束                  |
+| --------- | -------------- | ---- | --------------------- |
+| `title`   | string         | ✅   | 1–100 字              |
+| `content` | string         | ✅   | 最大 1MB              |
+| `postId`  | string \| null | —    | 关联文章（须为本人）  |
+| `draftId` | string \| null | —    | 关联草稿（须为本人）  |
+| `tags`    | string[]       | —    | 优先于 post 已有 tags |
 
 **成功 `200`：** `{ "reviewResult": { ... } }`
 
@@ -832,12 +832,12 @@
 
 **请求体：**
 
-| 字段 | 类型 | 必填 |
-|------|------|------|
-| `title` | string | ✅ |
-| `content` | string | ✅ |
-| `reason` | string | ✅ 违规原因，最多 800 字 |
-| `categories` | string[] | — 违规类别 |
+| 字段         | 类型     | 必填                     |
+| ------------ | -------- | ------------------------ |
+| `title`      | string   | ✅                       |
+| `content`    | string   | ✅                       |
+| `reason`     | string   | ✅ 违规原因，最多 800 字 |
+| `categories` | string[] | — 违规类别               |
 
 **成功 `200`：**
 
@@ -934,34 +934,34 @@ Authorization: Bearer <CRON_SECRET>
 
 ## 接口索引
 
-| 方法 | 路径 | 鉴权 |
-|------|------|------|
-| GET | `/api/health` | 公开 |
-| GET/POST | `/api/auth/[...nextauth]` | Auth.js |
-| POST | `/api/auth/register` | 公开 |
-| PATCH | `/api/users/me` | 需登录 |
-| GET | `/api/drafts` | 需登录 |
-| POST | `/api/drafts` | 需登录 |
-| GET | `/api/drafts/latest` | 需登录 |
-| GET/PUT/DELETE | `/api/drafts/{id}` | 需登录 |
-| GET | `/api/posts` | 需登录 |
-| POST | `/api/posts` | 需登录 |
-| GET/PUT/PATCH/DELETE | `/api/posts/{id}` | 需登录 |
-| GET | `/api/posts/{id}/edit` | 需登录 |
-| POST | `/api/posts/{id}/publish-update` | 需登录 |
-| POST | `/api/posts/{id}/like` | 需登录 |
-| POST | `/api/posts/{id}/view` | 可选登录 |
-| GET | `/api/feed/home` | 可选登录 |
-| GET/POST | `/api/prompts` | 需登录 |
-| GET/PUT/DELETE | `/api/prompts/{id}` | 需登录 |
-| POST | `/api/prompts/{id}/use` | 需登录 |
-| GET/POST | `/api/assets` | 需登录 |
-| PATCH/DELETE | `/api/assets/{id}` | 需登录 |
-| POST | `/api/uploads` | 需登录 |
-| POST | `/api/ai/generate` | 需登录 |
-| POST | `/api/ai/image` | 需登录 |
-| POST | `/api/review/content` | 需登录 |
-| POST | `/api/review/fix` | 需登录 |
-| POST | `/api/review/retry` | 需登录 |
-| GET | `/api/review/{postId}` | 需登录 |
-| GET | `/api/cron/refresh-feed-scores` | Cron |
+| 方法                 | 路径                             | 鉴权     |
+| -------------------- | -------------------------------- | -------- |
+| GET                  | `/api/health`                    | 公开     |
+| GET/POST             | `/api/auth/[...nextauth]`        | Auth.js  |
+| POST                 | `/api/auth/register`             | 公开     |
+| PATCH                | `/api/users/me`                  | 需登录   |
+| GET                  | `/api/drafts`                    | 需登录   |
+| POST                 | `/api/drafts`                    | 需登录   |
+| GET                  | `/api/drafts/latest`             | 需登录   |
+| GET/PUT/DELETE       | `/api/drafts/{id}`               | 需登录   |
+| GET                  | `/api/posts`                     | 需登录   |
+| POST                 | `/api/posts`                     | 需登录   |
+| GET/PUT/PATCH/DELETE | `/api/posts/{id}`                | 需登录   |
+| GET                  | `/api/posts/{id}/edit`           | 需登录   |
+| POST                 | `/api/posts/{id}/publish-update` | 需登录   |
+| POST                 | `/api/posts/{id}/like`           | 需登录   |
+| POST                 | `/api/posts/{id}/view`           | 可选登录 |
+| GET                  | `/api/feed/home`                 | 可选登录 |
+| GET/POST             | `/api/prompts`                   | 需登录   |
+| GET/PUT/DELETE       | `/api/prompts/{id}`              | 需登录   |
+| POST                 | `/api/prompts/{id}/use`          | 需登录   |
+| GET/POST             | `/api/assets`                    | 需登录   |
+| PATCH/DELETE         | `/api/assets/{id}`               | 需登录   |
+| POST                 | `/api/uploads`                   | 需登录   |
+| POST                 | `/api/ai/generate`               | 需登录   |
+| POST                 | `/api/ai/image`                  | 需登录   |
+| POST                 | `/api/review/content`            | 需登录   |
+| POST                 | `/api/review/fix`                | 需登录   |
+| POST                 | `/api/review/retry`              | 需登录   |
+| GET                  | `/api/review/{postId}`           | 需登录   |
+| GET                  | `/api/cron/refresh-feed-scores`  | Cron     |

@@ -8,7 +8,7 @@ import {
   RECOMMEND_FORMULA_VERSION,
 } from "@/lib/feed/scores/recommend";
 
-/** 首页 Feed 分页模式，与 orderBy 字段一一对应�?*/
+/** 首页 Feed 分页模式，与 orderBy 字段一一对应。 */
 export type HomePaginationMode =
   | "latest"
   | "likes"
@@ -41,9 +41,9 @@ const homeCursorSchema = z.discriminatedUnion("mode", [
     mode: z.literal("recommend"),
     score: z.number().finite(),
     id: z.string().min(1),
-    /** 推荐分计算的固定参考时间，整段翻页会话内保持一�?*/
+    /** 推荐分计算的固定参考时间，整段翻页会话内保持一致。 */
     asOf: isoDate,
-    /** 推荐分公式版本；缺失或非当前版本时分页游标作�?*/
+    /** 推荐分公式版本；缺失或非当前版本时分页游标作废。 */
     formulaVersion: z.number().int().positive().optional(),
   }),
   z.object({
@@ -52,7 +52,7 @@ const homeCursorSchema = z.discriminatedUnion("mode", [
     publishedAt: isoDate,
     id: z.string().min(1),
     formulaVersion: z.number().int().positive().optional(),
-    /** 上一页已展示条数，用于深页继续展示全局排名�?*/
+    /** 上一页已展示条数，用于深页继续展示全局排名。 */
     offset: z.number().int().nonnegative().optional(),
   }),
   z.object({
@@ -99,7 +99,7 @@ export function resolveHomePaginationMode(
   return "recommend";
 }
 
-/** 排序用时间：已发布文优先 publishedAt，否则回退 updatedAt�?*/
+/** 排序用时间：已发布文优先 publishedAt，否则回退 updatedAt。 */
 function getSortPublishedAt(post: PostCursorSource) {
   return post.publishedAt ?? post.updatedAt;
 }
@@ -185,7 +185,7 @@ export function decodeHomeCursor(
   }
 }
 
-/** DESC 排序下的 keyset：取字典序严格小于游标的下一页�?*/
+/** DESC 排序下的 keyset：取字典序严格小于游标的下一页。 */
 export function buildHomeCursorWhere(
   cursor: HomeFeedCursor
 ): Prisma.PostWhereInput {

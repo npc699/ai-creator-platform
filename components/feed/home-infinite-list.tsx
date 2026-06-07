@@ -192,7 +192,13 @@ export function HomeFeedInfiniteList({
     };
   }, [scrollStorageKey, initialItems, initialNextCursor, initialHasMore]);
 
+  const useVirtualLayout = isRestoring;
+
   useLayoutEffect(() => {
+    if (!useVirtualLayout) {
+      return;
+    }
+
     function updateScrollMargin() {
       setScrollMargin(listRef.current?.offsetTop ?? 0);
     }
@@ -200,10 +206,10 @@ export function HomeFeedInfiniteList({
     updateScrollMargin();
     window.addEventListener("resize", updateScrollMargin);
     return () => window.removeEventListener("resize", updateScrollMargin);
-  }, []);
+  }, [useVirtualLayout]);
 
   const virtualizer = useWindowVirtualizer({
-    count: items.length,
+    count: useVirtualLayout ? items.length : 0,
     estimateSize: () => ESTIMATED_ROW_PX + LIST_GAP_PX,
     overscan: 6,
     scrollMargin,
@@ -310,16 +316,20 @@ export function HomeFeedInfiniteList({
 
     pendingScrollYRef.current = null;
 
-    virtualizer.scrollToOffset(scrollY, { align: "start" });
-
-    void (async () => {
-      await waitForNextFrame();
-      await waitForNextFrame();
-      window.scrollTo(0, scrollY);
+    if (useVirtualLayout) {
       virtualizer.scrollToOffset(scrollY, { align: "start" });
-    })();
-    // virtualizer 随 items 更新，与 items 同步触发即可
-  }, [items, isRestoring, virtualizer]);
+
+      void (async () => {
+        await waitForNextFrame();
+        await waitForNextFrame();
+        window.scrollTo(0, scrollY);
+        virtualizer.scrollToOffset(scrollY, { align: "start" });
+      })();
+      return;
+    }
+
+    window.scrollTo(0, scrollY);
+  }, [items, isRestoring, useVirtualLayout, virtualizer]);
 
   useEffect(() => {
     if (isRestoring) {
@@ -352,32 +362,48 @@ export function HomeFeedInfiniteList({
         <p className="py-8 text-center text-sm text-zinc-500">正在恢复浏览位置…</p>
       ) : null}
 
-      <div
-        ref={listRef}
-        className="relative w-full"
-        style={{
-          height: isRestoring ? 0 : virtualizer.getTotalSize(),
-          overflow: isRestoring ? "hidden" : undefined,
-          visibility: isRestoring ? "hidden" : "visible",
-        }}
-      >
-        {virtualRows.map((virtualRow) => {
-          const item = items[virtualRow.index];
-          if (!item) {
-            return null;
-          }
+      {useVirtualLayout ? (
+        <div
+          ref={listRef}
+          className="relative w-full"
+          style={{
+            height: isRestoring ? 0 : virtualizer.getTotalSize(),
+            overflow: isRestoring ? "hidden" : undefined,
+            visibility: isRestoring ? "hidden" : "visible",
+          }}
+        >
+          {virtualRows.map((virtualRow) => {
+            const item = items[virtualRow.index];
+            if (!item) {
+              return null;
+            }
 
-          return (
-            <div
-              key={item.id}
-              data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
-              className="absolute left-0 top-0 w-full"
-              style={{
-                transform: `translateY(${virtualRow.start - scrollMargin}px)`,
-                paddingBottom: LIST_GAP_PX,
-              }}
-            >
+            return (
+              <div
+                key={item.id}
+                data-index={virtualRow.index}
+                ref={virtualizer.measureElement}
+                className="absolute left-0 top-0 w-full"
+                style={{
+                  transform: `translateY(${virtualRow.start - scrollMargin}px)`,
+                  paddingBottom: LIST_GAP_PX,
+                }}
+              >
+                {renderFeedListItem({
+                  channel,
+                  homeReturnPath,
+                  item,
+                  scrollLoadedCount: items.length,
+                  scrollStorageKey,
+                })}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div ref={listRef} className="w-full">
+          {items.map((item) => (
+            <div key={item.id}>
               {renderFeedListItem({
                 channel,
                 homeReturnPath,
@@ -386,9 +412,9 @@ export function HomeFeedInfiniteList({
                 scrollStorageKey,
               })}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div ref={sentinelRef} className="h-4 w-full" aria-hidden />
 

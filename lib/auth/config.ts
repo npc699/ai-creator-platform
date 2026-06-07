@@ -11,6 +11,8 @@ import { findActiveUserById } from "./session-user";
 import { credentialsSchema } from "./schemas";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // 本地 production 模式（next start）及反向代理场景需信任 Host，否则 session/signOut 报 UntrustedHost 并与 proxy 形成重定向环。
+  trustHost: true,
   pages: {
     signIn: "/login",
   },

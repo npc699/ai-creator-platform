@@ -93,7 +93,7 @@ type HomePostRow = Awaited<
   >
 >[number];
 
-/** 榜单首屏缓存为全站共用，读缓存后按当前用户刷新点赞态与链接�?*/
+/** 榜单首屏缓存为全站共用，读缓存后按当前用户刷新点赞态与链接。 */
 async function hydrateFeedPageWithViewer(
   result: HomeFeedPageResult,
   options: {
@@ -142,7 +142,7 @@ async function mapPostsToFeedItems(
   }));
 }
 
-/** 首页 Feed 分页查询，供 RSC 首屏�?/api/feed/home 共用�?*/
+/** 首页 Feed 分页查询，供 RSC 首屏与 /api/feed/home 共用。 */
 export async function fetchHomeFeedPage(
   options: FetchHomeFeedPageOptions
 ): Promise<HomeFeedPageResult> {

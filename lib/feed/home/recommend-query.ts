@@ -68,7 +68,7 @@ function buildTopicTagSql(topic: string | null) {
   return Prisma.sql`AND p.tags && ${tags}::text[]`;
 }
 
-/** 推荐 Tab：按综合分（互动 + 质量 + 时间衰减）排序并分页�?*/
+/** 推荐 Tab：按综合分（互动 + 质量 + 时间衰减）排序并分页。 */
 export async function fetchHomeFeedRecommendPage(
   options: FetchHomeFeedPageOptions,
   limit: number
@@ -176,7 +176,7 @@ export async function fetchHomeFeedRecommendPage(
   };
 }
 
-/** 当前请求是否应走推荐综合分查询�?*/
+/** 当前请求是否应走推荐综合分查询。 */
 export function isHomeRecommendFeed(
   channel: FeedChannelParam,
   sort: FeedSort
