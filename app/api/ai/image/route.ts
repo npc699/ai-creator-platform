@@ -46,11 +46,18 @@ function getErrorStatus(error: unknown) {
   return 502;
 }
 
+/**
+ * 处理 AI 图像生成请求。
+ * 需登录后调用，接收 prompt 和 size，返回生成的图片 URL。
+ */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "请先登录后再使用 AI 生图" }, { status: 401 });
+    return NextResponse.json(
+      { error: "请先登录后再使用 AI 生图" },
+      { status: 401 }
+    );
   }
 
   let body: unknown;

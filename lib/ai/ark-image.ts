@@ -30,6 +30,7 @@ type ArkImagesResponse = {
   };
 };
 
+// 火山方舟图片生成模型配置
 function getArkImageConfig() {
   const base = getArkBaseConfig();
   const model = process.env.ARK_IMAGE_MODEL?.trim();
@@ -43,6 +44,10 @@ function getArkImageConfig() {
   return { ...base, model };
 }
 
+/**
+ * 合并多个 AbortSignal，返回第一个触发 abort 的信号。
+ * 如果所有信号都没有 abort，则返回 undefined。
+ */
 function mergeAbortSignals(signals: AbortSignal[]) {
   const active = signals.filter(Boolean);
   if (active.length === 0) {
@@ -77,6 +82,10 @@ function mergeAbortSignals(signals: AbortSignal[]) {
   return controller.signal;
 }
 
+/**
+ * 创建图片生成的 AbortSignal，包含请求信号和超时信号。
+ * 超时时间由 IMAGE_GENERATION_TIMEOUT_MS 环境变量指定，默认 120s。
+ */
 function createImageGenerationSignal(requestSignal?: AbortSignal) {
   const timeoutSignal =
     typeof AbortSignal.timeout === "function"
@@ -90,6 +99,10 @@ function createImageGenerationSignal(requestSignal?: AbortSignal) {
   );
 }
 
+/**
+ * 从火山方舟图片生成响应中提取图片 URL 和可选的修订提示。
+ * 如果响应格式无效或缺少必要字段，会抛出异常。
+ */
 function extractImageResult(payload: ArkImagesResponse): ArkImageResult {
   const first = payload.data?.[0];
   const url = first?.url?.trim();
