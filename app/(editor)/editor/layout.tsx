@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { EditorLayoutClient } from "@/app/(editor)/editor/editor-layout-client";
+import { EditorShell } from "@/components/editor";
 import { getCurrentUser } from "@/lib/auth";
 
 export default async function EditorLayout({
@@ -14,5 +14,5 @@ export default async function EditorLayout({
     redirect("/login");
   }
 
-  return <EditorLayoutClient userId={user.id}>{children}</EditorLayoutClient>;
+  return <EditorShell userId={user.id}>{children}</EditorShell>;
 }

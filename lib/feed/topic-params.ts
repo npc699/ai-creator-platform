@@ -1,4 +1,4 @@
-import { HOME_TOPIC_TAGS } from "@/lib/posts/home-list";
+import { HOME_TOPIC_TAGS } from "@/lib/feed/home/list";
 
 /** 将文章标签编码为首页 topic 查询参数。 */
 export function encodeTopicParam(tag: string): string {

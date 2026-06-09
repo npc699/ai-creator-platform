@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { coverUrlSchema } from "@/lib/validations/cover-url";
+import { coverUrlSchema } from "./cover-url";
 
 const POST_CONTENT_MAX_BYTES = 1_000_000;
 

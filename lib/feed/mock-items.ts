@@ -1,4 +1,4 @@
-import type { FeedArticleItem } from "@/lib/feed/types";
+import type { FeedArticleItem } from "@/lib/posts/list-types";
 
 const baseFeedItems: FeedArticleItem[] = [
   {

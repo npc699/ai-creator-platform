@@ -1,12 +1,7 @@
-import type { FeedArticleItem } from "@/lib/feed/types";
-import {
-  computeIsRisingFast,
-  computeSustainedHotDays,
-} from "@/lib/feed/channel-badges";
-import { formatRelativeTime } from "@/lib/feed/format-relative-time";
-import type { FeedChannelParam } from "@/lib/feed/params";
 import { PostStatus } from "@/lib/generated/prisma/client";
-import { buildFeedListExcerpt } from "@/lib/posts/excerpt";
+
+import { buildFeedListExcerpt } from "./excerpt";
+import type { FeedArticleItem } from "./list-types";
 
 export function getAuthorLabel(user: {
   name?: string | null;
@@ -96,64 +91,5 @@ export function mapPublishedPostToFeedItem(
     reviewPending: post.reviewStatus === "PENDING",
     persistMetrics: true,
     coverUrl,
-  };
-}
-
-type HomePostRecord = Omit<PublishedPostRecord, "prompt"> & {
-  user: {
-    id: string;
-    name: string | null;
-    email: string | null;
-    phone: string | null;
-    image?: string | null;
-  };
-};
-
-type MapHomeFeedOptions = {
-  showRank?: boolean;
-  rank?: number;
-  channel?: FeedChannelParam;
-};
-
-/** 首页 Feed：全站已发布文章，不展示作者私有的上线状态角标。 */
-export function mapPostToHomeFeedItem(
-  post: HomePostRecord,
-  options?: MapHomeFeedOptions
-): FeedArticleItem {
-  const publishedAt = post.publishedAt ?? post.updatedAt;
-  const rank = options?.showRank ? options.rank : undefined;
-
-  const item = mapPublishedPostToFeedItem(
-    { ...post, prompt: null },
-    getAuthorLabel(post.user),
-    { id: post.user.id, image: post.user.image ?? null }
-  );
-
-  if (options?.channel === "hot") {
-    return {
-      ...item,
-      publishStatus: undefined,
-      persistMetrics: true,
-      rank,
-      time: formatRelativeTime(publishedAt),
-      isRisingFast: computeIsRisingFast(post, rank),
-    };
-  }
-
-  if (options?.channel === "viral") {
-    return {
-      ...item,
-      publishStatus: undefined,
-      persistMetrics: true,
-      time: formatRelativeTime(publishedAt),
-      sustainedHotDays: computeSustainedHotDays(post),
-    };
-  }
-
-  return {
-    ...item,
-    publishStatus: undefined,
-    persistMetrics: true,
-    rank,
   };
 }

@@ -15,6 +15,7 @@ const BASE_SYSTEM_PROMPT = [
   OUTPUT_RULES,
 ].join("\n");
 
+/** 构建生成文章的消息列表 */
 function buildGenerateMessages(input: AiGenerateRequest): ArkChatMessage[] {
   const keyword = input.keyword?.trim() ?? "";
 
@@ -33,6 +34,7 @@ function buildGenerateMessages(input: AiGenerateRequest): ArkChatMessage[] {
   ];
 }
 
+/** 构建润色文章的消息列表 */
 function buildPolishMessages(input: AiGenerateRequest): ArkChatMessage[] {
   const context = input.context?.trim() ?? "";
 
@@ -52,6 +54,7 @@ function buildPolishMessages(input: AiGenerateRequest): ArkChatMessage[] {
   ];
 }
 
+/** 构建选中文章的消息列表 */
 function buildSelectionMessages(input: AiGenerateRequest): ArkChatMessage[] {
   const instruction = input.keyword?.trim() ?? "";
   const context = input.context?.trim() ?? "";
@@ -77,6 +80,7 @@ function buildSelectionMessages(input: AiGenerateRequest): ArkChatMessage[] {
   ];
 }
 
+/** 构建扩写文章的消息列表 */
 function buildExpandMessages(input: AiGenerateRequest): ArkChatMessage[] {
   const context = input.context?.trim() ?? "";
 
@@ -96,6 +100,7 @@ function buildExpandMessages(input: AiGenerateRequest): ArkChatMessage[] {
   ];
 }
 
+/** 构建精简文章的消息列表 */
 function buildShrinkMessages(input: AiGenerateRequest): ArkChatMessage[] {
   const context = input.context?.trim() ?? "";
 

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import React, { useState } from "react";
 
-import { resolveSafeCallbackUrl } from "@/lib/auth/safe-callback-url";
+import { resolveSafeCallbackUrl } from "@/lib/auth/client";
 import {
   authEyebrowClass,
   authInputClass,
@@ -27,7 +27,7 @@ export default function LoginPage() {
     setError("");
     setIsSubmitting(true);
 
-    // redirect: false 让页面自行处理成功/失败，避免 Auth.js 默认整页跳转。
+    // 走 Auth.js Credentials Provider（lib/auth/config.ts）；redirect: false 由本页处理跳转与错误。
     const result = await signIn("credentials", {
       identifier,
       password,
@@ -42,7 +42,7 @@ export default function LoginPage() {
       return;
     }
 
-    // proxy.ts 在未登录访问受保护页时会写入 ?callbackUrl=...，登录成功后回跳原页面。
+    // proxy.ts 写入 ?callbackUrl=...；resolveSafeCallbackUrl 校验同源与白名单，无效则回 "/"。
     const params = new URLSearchParams(window.location.search);
     const callbackPath = resolveSafeCallbackUrl(
       params.get("callbackUrl"),

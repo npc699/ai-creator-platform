@@ -1,4 +1,4 @@
-import { coverUrlSchema } from "@/lib/validations/cover-url";
+import { coverUrlSchema } from "./cover-url";
 import { z } from "zod";
 
 // 标题入库默认值：用户允许留空，但 Prisma 字段是 NOT NULL，所以服务端兜底。

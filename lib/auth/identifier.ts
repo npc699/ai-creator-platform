@@ -1,3 +1,5 @@
+// 登录标识解析：将用户输入的 identifier 字符串区分为邮箱或手机号，并查库。
+// 解析规则与 validators.ts 对齐，查库逻辑与 config.authorize 解耦。
 import "server-only";
 
 import { prisma } from "@/lib/db";
@@ -12,6 +14,7 @@ export type AuthIdentifier =
   | { kind: "email"; value: string }
   | { kind: "phone"; value: string };
 
+/** 含 @ 按邮箱处理，否则按手机号；格式非法时返回 null。 */
 export function parseAuthIdentifier(raw: string): AuthIdentifier | null {
   const value = raw.trim();
 

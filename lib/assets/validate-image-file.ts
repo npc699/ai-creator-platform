@@ -1,4 +1,4 @@
-import { LOCAL_IMAGE_MAX_BYTES } from "@/lib/editor/local-image";
+import { LOCAL_IMAGE_MAX_BYTES } from "@/lib/editor/image/local-image";
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",

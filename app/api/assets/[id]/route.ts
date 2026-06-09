@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { deleteLocalUploadFile, isLocalUploadUrl } from "@/lib/assets/storage";
+import { deleteUploadFile } from "@/lib/assets/storage";
+import { isPlatformUploadUrl } from "@/lib/assets/public-url";
 import { serializeAsset } from "@/lib/assets/serialize";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -77,8 +78,8 @@ export async function DELETE(
 
   await prisma.asset.delete({ where: { id } });
 
-  if (isLocalUploadUrl(asset.url)) {
-    await deleteLocalUploadFile(asset.url);
+  if (isPlatformUploadUrl(asset.url)) {
+    await deleteUploadFile(asset.url);
   }
 
   return NextResponse.json({ ok: true });

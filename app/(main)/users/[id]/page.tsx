@@ -1,31 +1,30 @@
+// 作者主页：本人与访客看到的数据范围不同；?from= 决定返回按钮目标。
 import { notFound } from "next/navigation";
 
+import { UserProfilePage } from "@/components/pages";
+import { ReaderHeader } from "@/components/reader";
+import { ContentPanel } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
-import { AuthorProfilePanel } from "@/components/layout/author-profile-panel";
-import { ContentPanel } from "@/components/layout/content-panel";
-import { FeedPageLayout } from "@/components/layout/feed-page-layout";
-import { PostReaderHeader } from "@/components/layout/post-reader-header";
-import { getCreatorStats } from "@/lib/sidebar/creator-stats";
 import {
+  buildAuthorProfileHref,
+  getAuthorProfileBackTarget,
+  getCreatorStats,
   getPublicAuthorProfile,
   getPublicAuthorStats,
   listCreatorAuthorPosts,
   listPublicAuthorPosts,
-} from "@/lib/users/author-profile";
-import {
-  buildAuthorProfileHref,
-  getAuthorProfileBackTarget,
-} from "@/lib/users/profile-navigation";
+} from "@/lib/users";
 
-type UserProfilePageProps = {
+type UserProfileRouteProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
 };
 
-export default async function UserProfilePage({
+/** 路由 `/users/[id]`；无公开资料时 404，不暴露用户是否存在。 */
+export default async function UserProfileRoute({
   params,
   searchParams,
-}: UserProfilePageProps) {
+}: UserProfileRouteProps) {
   const { id } = await params;
   const { from } = await searchParams;
   const currentUser = await getCurrentUser();
@@ -54,26 +53,24 @@ export default async function UserProfilePage({
   const authorProfilePath = buildAuthorProfileHref(id, from);
 
   return (
-    <FeedPageLayout>
-      <ContentPanel
-        header={
-          <PostReaderHeader
-            backHref={backTarget.href}
-            backLabel={backTarget.label}
-          />
-        }
-      >
-        <AuthorProfilePanel
-          authorProfilePath={authorProfilePath}
-          isOwner={isOwner}
-          ownerEditBio={profile.bio ?? ""}
-          ownerEditName={isOwner ? (currentUser?.name ?? "") : ""}
-          postCountLabel={isOwner ? "已发布" : "文章"}
-          posts={posts}
-          profile={profile}
-          stats={stats}
+    <ContentPanel
+      header={
+        <ReaderHeader
+          backHref={backTarget.href}
+          backLabel={backTarget.label}
         />
-      </ContentPanel>
-    </FeedPageLayout>
+      }
+    >
+      <UserProfilePage
+        authorProfilePath={authorProfilePath}
+        isOwner={isOwner}
+        ownerEditBio={profile.bio ?? ""}
+        ownerEditName={isOwner ? (currentUser?.name ?? "") : ""}
+        postCountLabel={isOwner ? "已发布" : "文章"}
+        posts={posts}
+        profile={profile}
+        stats={stats}
+      />
+    </ContentPanel>
   );
 }

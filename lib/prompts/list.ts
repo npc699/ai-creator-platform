@@ -1,7 +1,7 @@
 import type { Prisma } from "@/lib/generated/prisma/client";
-import type { PromptCategorySlug } from "@/lib/prompts/category";
-import { slugToPrismaCategory } from "@/lib/prompts/category";
-import type { PromptScope } from "@/lib/prompts/query";
+import type { PromptCategorySlug } from "./category";
+import { slugToPrismaCategory } from "./category";
+import type { PromptScope } from "./query";
 
 /** 列表查询时附带当前用户对官方 Prompt 的收藏状态。 */
 export function promptListInclude(userId: string) {

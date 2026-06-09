@@ -147,7 +147,8 @@ lib/db/
 proxy.ts                    # 路由守卫
 types/next-auth.d.ts        # Session / JWT 类型扩展
 prisma/schema.prisma        # User 模型
-prisma/seed.ts              # 开发管理员账号
+prisma/seed.ts              # 开发管理员账号（db:seed）
+scripts/db/seeds/           # 可选测试灌数（test-users、prompts 等）
 ```
 
 ---

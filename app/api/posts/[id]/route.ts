@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { invalidateFeedLeaderboardOnPostVisibilityChange } from "@/lib/feed/post-visibility";
+import { invalidateFeedLeaderboardOnPostVisibilityChange } from "@/lib/feed/cache";
 import { PostStatus } from "@/lib/generated/prisma/client";
 import { assertOwnedPromptId } from "@/lib/prompts/ownership";
 import {

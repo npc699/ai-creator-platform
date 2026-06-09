@@ -1,3 +1,4 @@
+/** 内容审核与质量分：AI 审核 pipeline、Redis 缓存、Prisma 落库 helper。仅服务端 `@/lib/review`；请求 Schema 见 `./schema`。 */
 import "server-only";
 
 import crypto from "node:crypto";
@@ -21,7 +22,7 @@ import {
   type ReviewRiskLevel,
   type ReviewStatus,
   type ReviewType,
-} from "@/lib/review/schema";
+} from "./schema";
 
 const REVIEW_CACHE_TTL_SECONDS = 60 * 60;
 const REVIEW_TIMEOUT_MS = 25_000;

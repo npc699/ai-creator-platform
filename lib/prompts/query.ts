@@ -1,6 +1,6 @@
 import type { Prisma } from "@/lib/generated/prisma/client";
-import type { PromptCategorySlug } from "@/lib/prompts/category";
-import type { SerializedPrompt } from "@/lib/prompts/serialize";
+import type { PromptCategorySlug } from "./category";
+import type { SerializedPrompt } from "./serialize";
 
 export const PROMPT_SCOPES = ["official", "mine", "favorite"] as const;
 export type PromptScope = (typeof PROMPT_SCOPES)[number];

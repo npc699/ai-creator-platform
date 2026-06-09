@@ -12,8 +12,8 @@ import {
 } from "react";
 import type { Editor as TipTapEditor } from "@tiptap/react";
 
-import { AiGeneratedMark } from "@/components/editor/extensions/ai-generated-mark";
-import { EditorCoverDialogHost } from "@/components/editor/editor-cover-dialog-host";
+import { AiGeneratedMark } from "@/components/editor/workspace/ai-generated-mark";
+import { EditorCoverDialogHost } from "@/components/editor/cover/cover";
 import {
   useDraftAutosave,
   type AutosaveStatus,
@@ -25,8 +25,8 @@ import {
   pickDraftOnLoadForId,
   getDraftStorageKey,
   type CloudDraftSnapshot,
-} from "@/lib/draft-sync";
-import { getLocalDraft, putLocalDraft, clearNewDraftLocal } from "@/lib/draft-idb";
+} from "@/lib/drafts/sync";
+import { clearNewDraftLocal, getLocalDraft, putLocalDraft } from "@/lib/client";
 import type { AiGenerateMode } from "@/lib/ai/schema";
 import { canAddPostTag, normalizePostTag } from "@/lib/posts/tags";
 

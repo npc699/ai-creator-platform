@@ -7,6 +7,7 @@ export type AiImageSize = (typeof AI_IMAGE_SIZES)[number];
 
 export const aiImageSizeSchema = z.enum(AI_IMAGE_SIZES);
 
+/** 图片生成的请求体 */
 export const aiImageRequestSchema = z.object({
   prompt: z
     .string()
@@ -18,8 +19,9 @@ export const aiImageRequestSchema = z.object({
 
 export type AiImageRequest = z.infer<typeof aiImageRequestSchema>;
 
+/** 图片生成的响应体 */
 export const aiImageResponseSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
   revisedPrompt: z.string().optional(),
 });
 

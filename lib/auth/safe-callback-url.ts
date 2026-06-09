@@ -1,3 +1,4 @@
+// 登录回跳路径白名单，防止开放重定向；纯函数，可在 proxy 与 Client Component 共用。
 // 登录后不允许回跳到认证页，避免登录成功后再次进入登录/注册流程。
 const blockedCallbackPaths = new Set(["/login", "/register"]);
 

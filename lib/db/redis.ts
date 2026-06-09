@@ -1,3 +1,4 @@
+// 服务端 Redis 客户端：懒连接 + dev 单例；Feed/审核缓存通过 getRedis() 使用，调用方自行 try/catch 降级。
 import "server-only";
 
 import { createClient } from "redis";
@@ -7,7 +8,7 @@ const globalForRedis = globalThis as unknown as {
   redisConnectPromise?: Promise<ReturnType<typeof createClient>>;
 };
 
-// Redis 客户端在开发热更新期间复用，避免重复创建连接。
+// 模块加载即建 client 对象，但不主动 connect；避免未配置 REDIS_URL 时拖垮整应用启动。
 export const redis =
   globalForRedis.redis ??
   createClient({
@@ -18,12 +19,12 @@ if (process.env.NODE_ENV !== "production") {
   globalForRedis.redis = redis;
 }
 
+/** 返回已连接的客户端；首次调用会 connect，并发调用共用同一 Promise。 */
 export async function getRedis() {
   if (redis.isOpen) {
     return redis;
   }
 
-  // 并发请求首次连接 Redis 时共用同一个连接 Promise。
   globalForRedis.redisConnectPromise ??= redis.connect().then(() => redis);
 
   return globalForRedis.redisConnectPromise;

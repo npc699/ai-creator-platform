@@ -1,6 +1,7 @@
+// 邮箱与手机号的纯函数校验，无服务端依赖，供 schemas 与 identifier 共用。
 import { z } from "zod";
 
-// 标准邮箱格式；开发环境额外允许 *@localhost。
+// 标准邮箱格式；开发环境额外允许 *@localhost，便于本地 seed 账号登录。
 export function isValidAuthEmail(email: string) {
   if (z.email().safeParse(email).success) {
     return true;

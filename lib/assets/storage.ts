@@ -1,13 +1,20 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
 
 import {
-  buildUploadPublicUrl as buildPublicUrl,
+  buildUploadPublicUrl,
+  isBlobUploadUrl,
   isLocalUploadUrl,
-} from "@/lib/assets/public-url";
+} from "./public-url";
+import {
+  deleteBlobUploadFile,
+  saveUploadedImageToBlob,
+} from "./storage-blob";
+import {
+  deleteDiskUploadFile,
+  saveUploadedImageToDisk,
+} from "./storage-local";
 
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -37,32 +44,13 @@ function normalizeExtension(mimeType: string, filename: string) {
   return ext === "jpeg" ? "jpg" : ext;
 }
 
-/** 本站上传资源的公开 URL 前缀，与 public/uploads 目录对应。 */
-export function buildUploadPublicUrl(userId: string, filename: string) {
-  return buildPublicUrl(userId, filename);
+function isBlobStorageEnabled() {
+  return Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim());
 }
 
-export { isLocalUploadUrl };
+export { buildUploadPublicUrl, isLocalUploadUrl };
 
-export function resolveUploadAbsolutePath(publicUrl: string) {
-  if (!isLocalUploadUrl(publicUrl)) {
-    return null;
-  }
-
-  const relative = publicUrl.replace(/^\/uploads\//, "");
-  const segments = relative.split("/").filter(Boolean);
-  if (segments.length < 2) {
-    return null;
-  }
-
-  const resolved = path.join(process.cwd(), "public", "uploads", ...segments);
-  const uploadsRoot = path.join(process.cwd(), "public", "uploads");
-  if (!resolved.startsWith(uploadsRoot)) {
-    return null;
-  }
-
-  return resolved;
-}
+export { resolveUploadAbsolutePath } from "./storage-local";
 
 type SaveUploadInput = {
   userId: string;
@@ -78,20 +66,18 @@ export async function saveUploadedImage(input: SaveUploadInput) {
   }
 
   const filename = `${randomUUID()}.${extension}`;
-  const userDir = path.join(process.cwd(), "public", "uploads", input.userId);
-  await mkdir(userDir, { recursive: true });
-
-  const absolutePath = path.join(userDir, filename);
-  await writeFile(absolutePath, input.buffer);
-
-  return {
-    url: buildUploadPublicUrl(input.userId, filename),
+  const payload = {
+    userId: input.userId,
+    buffer: input.buffer,
     mimeType: input.mimeType,
-    sizeBytes: input.buffer.byteLength,
   };
+
+  return isBlobStorageEnabled()
+    ? saveUploadedImageToBlob(payload, filename)
+    : saveUploadedImageToDisk(payload, filename);
 }
 
-/** AI 生图返回的临时外链会过期，入库前先下载到本站 uploads 目录。 */
+/** AI 生图返回的临时外链会过期，入库前先下载到平台存储。 */
 export async function saveRemoteImage(input: {
   userId: string;
   remoteUrl: string;
@@ -125,15 +111,13 @@ export async function saveRemoteImage(input: {
   });
 }
 
-export async function deleteLocalUploadFile(publicUrl: string) {
-  const absolutePath = resolveUploadAbsolutePath(publicUrl);
-  if (!absolutePath) {
+export async function deleteUploadFile(publicUrl: string) {
+  if (isLocalUploadUrl(publicUrl)) {
+    await deleteDiskUploadFile(publicUrl);
     return;
   }
 
-  try {
-    await unlink(absolutePath);
-  } catch {
-    // 文件可能已被手动删除，删除素材记录时静默忽略即可。
+  if (isBlobUploadUrl(publicUrl)) {
+    await deleteBlobUploadFile(publicUrl);
   }
 }
