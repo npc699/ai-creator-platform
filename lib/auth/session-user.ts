@@ -1,3 +1,5 @@
+// 按用户 ID 回查数据库中的活跃用户，供 session callback 与 proxy.ts 共用。
+// 与 JWT 解耦后，proxy 可在不引入完整 Auth.js 栈的情况下校验删号状态。
 import "server-only";
 
 import { prisma } from "@/lib/db";
@@ -12,6 +14,7 @@ const activeUserSelect = {
   role: true,
 } as const;
 
+/** JWT 有效且用户仍存在时返回的会话用户快照。 */
 export type ActiveSessionUser = {
   id: string;
   email: string | null;

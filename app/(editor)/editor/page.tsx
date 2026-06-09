@@ -1,4 +1,4 @@
-import { TipTapEditor } from "@/components/editor/TipTapEditor";
+import { TipTapEditor } from "@/components/editor";
 
 export default function EditorPage() {
   return <TipTapEditor />;

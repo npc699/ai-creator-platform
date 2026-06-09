@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// 数据模型单一来源：PostgreSQL 表结构、枚举与索引；Client 生成到 lib/generated/prisma。
+// 变更后执行 db:generate，开发环境还需递增 lib/db/prisma.ts 的 PRISMA_CLIENT_CACHE_KEY。
 
 generator client {
   provider = "prisma-client"

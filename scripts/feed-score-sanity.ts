@@ -2,8 +2,7 @@
  * 热点/爆文公式手工验算：用固定样本核对排序是否符合预期。
  * 运行：npx tsx scripts/feed-score-sanity.ts
  */
-import { computeHotScore } from "../lib/feed/hot-score";
-import { computeViralScore } from "../lib/feed/viral-score";
+import { computeHotScore, computeViralScore } from "../lib/feed/scores/rankings";
 
 const now = new Date("2026-05-26T12:00:00.000Z");
 

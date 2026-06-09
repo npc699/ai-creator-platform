@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getAuthorLabel, getPostDisplayScore } from "@/lib/posts/feed-item";
 import { buildFeedListExcerpt } from "@/lib/posts/excerpt";
-import { CREATOR_PUBLISHED_POST_STATUSES } from "@/lib/sidebar/creator-stats";
+import { CREATOR_PUBLISHED_POST_STATUSES } from "./creator-stats";
 import { PostStatus } from "@/lib/generated/prisma/client";
 
 export type PublicAuthorProfile = {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { refreshFeedScores } from "@/lib/feed/refresh-scores";
+import { refreshFeedScores } from "@/lib/feed/scores/refresh";
 
 export const runtime = "nodejs";
 

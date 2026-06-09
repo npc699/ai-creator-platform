@@ -1,3 +1,4 @@
+/** 火山方舟：文本生成、生图与请求 Schema。服务端 API 可 `@/lib/ai`；Client 仅 deep import schema。 */
 export {
   ArkConfigError,
   ArkUpstreamError,

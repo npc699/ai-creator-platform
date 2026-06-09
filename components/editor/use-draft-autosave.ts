@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-import { getLocalDraft, putLocalDraft } from "@/lib/draft-idb";
+import { getLocalDraft, putLocalDraft } from "@/lib/client";
 import {
   getDraftStorageKey,
   isAuthOrClientError,
@@ -10,7 +10,7 @@ import {
   shouldUploadLocal,
   type CloudDraftSnapshot,
   type LocalDraftRecord,
-} from "@/lib/draft-sync";
+} from "@/lib/drafts/sync";
 
 export type AutosaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
 
@@ -54,7 +54,12 @@ type RunSaveOptions = {
 
 export type UseDraftAutosaveResult = {
   /** EditorProvider hydrate 完成后用真实落库内容初始化 baseline，避免再次保存。 */
-  seedSavedSnapshot: (title: string, content: string, tags?: string[], coverUrl?: string | null) => void;
+  seedSavedSnapshot: (
+    title: string,
+    content: string,
+    tags?: string[],
+    coverUrl?: string | null
+  ) => void;
   /** 立即保存草稿（供顶部按钮、Ctrl+S 调用）。 */
   saveDraft: (options?: RunSaveOptions) => Promise<SaveDraftResult>;
   /** 联网后对比时间戳并上传 pending 本地草稿。 */
@@ -260,11 +265,19 @@ export function useDraftAutosave({
   const runSave = useCallback(
     async (options?: RunSaveOptions): Promise<SaveDraftResult> => {
       if (!enabledRef.current) {
-        return { ok: false, reason: "not_ready", message: "当前不在草稿编辑模式" };
+        return {
+          ok: false,
+          reason: "not_ready",
+          message: "当前不在草稿编辑模式",
+        };
       }
 
       if (!isReadyRef.current) {
-        return { ok: false, reason: "not_ready", message: "草稿加载中，请稍候" };
+        return {
+          ok: false,
+          reason: "not_ready",
+          message: "草稿加载中，请稍候",
+        };
       }
 
       if (isSavingRef.current) {
@@ -488,7 +501,8 @@ export function useDraftAutosave({
     return (
       lastSavedTitleRef.current !== nextTitle ||
       lastSavedContentRef.current !== nextContent ||
-      JSON.stringify(lastSavedTagsRef.current) !== JSON.stringify(tagsRef.current) ||
+      JSON.stringify(lastSavedTagsRef.current) !==
+        JSON.stringify(tagsRef.current) ||
       lastSavedCoverUrlRef.current !== coverUrlRef.current
     );
   }, []);
@@ -539,5 +553,11 @@ export function useDraftAutosave({
     };
   }, []);
 
-  return { seedSavedSnapshot, saveDraft, syncPendingDraft, scheduleLocalPersist, isDirty };
+  return {
+    seedSavedSnapshot,
+    saveDraft,
+    syncPendingDraft,
+    scheduleLocalPersist,
+    isDirty,
+  };
 }

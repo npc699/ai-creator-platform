@@ -1,3 +1,5 @@
+// Auth.js 核心配置：Credentials 登录、JWT 会话、authorize 与 callbacks。
+// 导出 handlers 供 API 路由，auth/signIn/signOut 供服务端调用。
 import "server-only";
 
 import bcrypt from "bcryptjs";
@@ -8,8 +10,9 @@ import { findUserByIdentifier, parseAuthIdentifier } from "./identifier";
 import { findActiveUserById } from "./session-user";
 import { credentialsSchema } from "./schemas";
 
-// 认证配置
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // 本地 production 模式（next start）及反向代理场景需信任 Host，否则 session/signOut 报 UntrustedHost 并与 proxy 形成重定向环。
+  trustHost: true,
   pages: {
     signIn: "/login",
   },

@@ -4,7 +4,7 @@ import {
   ArkConfigError,
   ArkUpstreamError,
   getArkBaseConfig,
-} from "@/lib/ai/ark-config";
+} from "./ark-config";
 
 export type ArkChatMessage = {
   role: "system" | "user" | "assistant";
@@ -38,14 +38,16 @@ type ArkChatCompletion = {
   }>;
 };
 
-export { ArkConfigError, ArkUpstreamError } from "@/lib/ai/ark-config";
+export { ArkConfigError, ArkUpstreamError } from "./ark-config";
 
 function getArkChatConfig() {
   const base = getArkBaseConfig();
   const model = process.env.ARK_MODEL?.trim();
 
   if (!model) {
-    throw new ArkConfigError("未配置 ARK_MODEL（推理接入点 ID），无法调用火山方舟");
+    throw new ArkConfigError(
+      "未配置 ARK_MODEL（推理接入点 ID），无法调用火山方舟"
+    );
   }
 
   return { ...base, model };
@@ -138,6 +140,10 @@ export async function* streamArkChat({
   }
 }
 
+/**
+ * 调用火山方舟 Chat Completions 进行非流式对话。
+ * 适用于不需要打字机效果的短文本生成或结构化数据提取。
+ */
 export async function chatArk({
   messages,
   signal,
@@ -169,7 +175,9 @@ export async function chatArk({
     );
   }
 
-  const payload = (await response.json().catch(() => null)) as ArkChatCompletion | null;
+  const payload = (await response
+    .json()
+    .catch(() => null)) as ArkChatCompletion | null;
   const content = payload?.choices?.[0]?.message?.content;
 
   if (typeof content !== "string" || content.trim().length === 0) {

@@ -1,14 +1,15 @@
-import { HomeFeedInfiniteList } from "@/components/layout/home-feed-infinite-list";
-import { FeedEmptyState } from "@/components/layout/feed-empty-state";
-import { FeedPageLayout } from "@/components/layout/feed-page-layout";
-import { FeedPanel } from "@/components/layout/feed-panel";
+// 首页 Feed：channel / sort / topic 由 URL 驱动，首屏 SSR + 客户端无限滚动加载更多。
+import { HomePage } from "@/components/pages";
 import { getCurrentUser } from "@/lib/auth";
-import { buildHomeQuery, parseFeedChannel, parseFeedSort } from "@/lib/feed/params";
-import { fetchHomeFeedPage } from "@/lib/posts/home-feed-query";
-import { getHomeEmptyMessage } from "@/lib/posts/home-list";
+import {
+  buildHomeQuery,
+  parseFeedChannel,
+  parseFeedSort,
+} from "@/lib/feed/params";
+import { fetchHomeFeedPage } from "@/lib/feed/home/query";
 import { getFeedScrollStorageKey } from "@/lib/posts/reader-navigation";
 
-type HomePageProps = {
+type HomeRouteProps = {
   searchParams: Promise<{
     channel?: string;
     sort?: string;
@@ -16,7 +17,8 @@ type HomePageProps = {
   }>;
 };
 
-export default async function HomePage({ searchParams }: HomePageProps) {
+/** 路由 `/`；筛选变化时重建列表并恢复对应滚动位置。 */
+export default async function HomeRoute({ searchParams }: HomeRouteProps) {
   const params = await searchParams;
   const channel = parseFeedChannel(params.channel ?? null);
   const sort = parseFeedSort(params.sort ?? null);
@@ -39,28 +41,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   });
 
   return (
-    <FeedPageLayout>
-      <FeedPanel channel={channel}>
-        {items.length === 0 ? (
-          <FeedEmptyState
-            actionHref="/editor"
-            actionLabel="去编辑器创作"
-            message={getHomeEmptyMessage({ channel, topic })}
-          />
-        ) : (
-          <HomeFeedInfiniteList
-            key={homeReturnPath}
-            channel={channel}
-            homeReturnPath={homeReturnPath}
-            initialHasMore={hasMore}
-            initialItems={items}
-            initialNextCursor={nextCursor}
-            scrollStorageKey={scrollStorageKey}
-            sort={sort}
-            topic={topic}
-          />
-        )}
-      </FeedPanel>
-    </FeedPageLayout>
+    <HomePage
+      channel={channel}
+      hasMore={hasMore}
+      homeReturnPath={homeReturnPath}
+      items={items}
+      nextCursor={nextCursor}
+      scrollStorageKey={scrollStorageKey}
+      sort={sort}
+      topic={topic}
+    />
   );
 }

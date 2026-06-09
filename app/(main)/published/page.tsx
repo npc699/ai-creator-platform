@@ -1,12 +1,13 @@
-import { ContentPanel } from "@/components/layout/content-panel";
-import { FeedArticleList } from "@/components/layout/feed-article-list";
-import { FeedScrollRestore } from "@/components/layout/feed-scroll-restore";
-import { FeedEmptyState } from "@/components/layout/feed-empty-state";
-import { FeedPageLayout } from "@/components/layout/feed-page-layout";
-import { PublishedSortNav } from "@/components/layout/published-sort-nav";
+// ??????filter ? URL ?????????????????
+import { PublishedFilterNav } from "@/components/article";
+import { PublishedPage } from "@/components/pages";
+import { ContentPanel } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { buildPublishedQuery, parsePublishedFilter } from "@/lib/feed/panel-params";
+import {
+  buildPublishedQuery,
+  parsePublishedFilter,
+} from "@/lib/posts/panel-params";
 import { getLikedPostIds } from "@/lib/posts/metrics";
 import {
   buildPostHref,
@@ -19,20 +20,21 @@ import {
 import {
   buildPublishedListOrderBy,
   buildPublishedListWhere,
-  getPublishedEmptyMessage,
 } from "@/lib/posts/published-list";
 
-type PublishedPageProps = {
+type PublishedRouteProps = {
   searchParams: Promise<{ filter?: string }>;
 };
 
-export default async function PublishedPage({ searchParams }: PublishedPageProps) {
+/** ?? `/published`?filter ?? URL?publishedReturnPath ????? scroll storage key? */
+export default async function PublishedRoute({
+  searchParams,
+}: PublishedRouteProps) {
   const user = await getCurrentUser();
   const { filter: filterParam } = await searchParams;
   const filter = parsePublishedFilter(filterParam ?? null);
   const publishedReturnPath = buildPublishedQuery({ filter });
   const scrollStorageKey = getFeedScrollStorageKey(publishedReturnPath);
-
   const posts = user
     ? await prisma.post.findMany({
         where: buildPublishedListWhere(user.id, filter),
@@ -57,7 +59,7 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
       })
     : [];
 
-  const authorLabel = user ? getAuthorLabel(user) : "我";
+  const authorLabel = user ? getAuthorLabel(user) : "?";
   const likedPostIds = user
     ? await getLikedPostIds(
         user.id,
@@ -75,19 +77,12 @@ export default async function PublishedPage({ searchParams }: PublishedPageProps
   }));
 
   return (
-    <FeedPageLayout>
-      <FeedScrollRestore storageKey={scrollStorageKey} />
-      <ContentPanel header={<PublishedSortNav />} suspenseHeader>
-        {feedItems.length === 0 ? (
-          <FeedEmptyState
-            actionHref="/editor"
-            actionLabel="去编辑器创作"
-            message={getPublishedEmptyMessage(filter)}
-          />
-        ) : (
-          <FeedArticleList items={feedItems} scrollStorageKey={scrollStorageKey} />
-        )}
-      </ContentPanel>
-    </FeedPageLayout>
+    <ContentPanel header={<PublishedFilterNav />} suspenseHeader>
+      <PublishedPage
+        feedItems={feedItems}
+        filter={filter}
+        scrollStorageKey={scrollStorageKey}
+      />
+    </ContentPanel>
   );
 }

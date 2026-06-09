@@ -1,7 +1,7 @@
+// 注册页必须是 Client Component：表单校验、调用注册 API 与 signIn 自动登录均在浏览器执行。
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "next/link";import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { type FormEvent, useState } from "react";
 
@@ -26,6 +26,7 @@ export default function RegisterPage() {
     event.preventDefault();
     setError("");
 
+    // 与 registerSchema 一致：邮箱、手机号至少一项；在客户端先拦一层，减少无效请求。
     if (!email.trim() && !phone.trim()) {
       setError("请至少填写邮箱或手机号");
       return;
@@ -35,11 +36,10 @@ export default function RegisterPage() {
       setError("两次输入的密码不一致");
       return;
     }
-
     setIsSubmitting(true);
 
-    const response = await fetch("/api/auth/register", {
-      method: "POST",
+    // 注册与登录分离：先写库，再由 Credentials Provider 建立会话。
+    const response = await fetch("/api/auth/register", {      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
@@ -60,10 +60,11 @@ export default function RegisterPage() {
       return;
     }
 
+    // 与登录页 identifier 字段对齐；双填时优先手机号，与 Credentials 解析习惯一致。
     const loginIdentifier = phone.trim() || email.trim();
 
-    const result = await signIn("credentials", {
-      identifier: loginIdentifier,
+    // redirect: false 便于区分「注册成功但登录失败」并留在本页提示。
+    const result = await signIn("credentials", {      identifier: loginIdentifier,
       password,
       redirect: false,
     });
@@ -75,9 +76,9 @@ export default function RegisterPage() {
       return;
     }
 
+    // 新用户无 callbackUrl 场景，固定进首页；refresh 让布局读到新会话 Cookie。
     router.push("/");
-    router.refresh();
-  }
+    router.refresh();  }
 
   return (
     <main className="auth-page flex min-h-screen items-center justify-center bg-white px-6 py-12 dark:bg-zinc-950">

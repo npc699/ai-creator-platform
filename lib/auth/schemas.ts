@@ -1,3 +1,5 @@
+// 登录/注册的 Zod Schema，定义字段约束与用户可见的错误文案。
+// 格式细节委托 validators.ts，本文件只负责 API 层校验结构。
 import { z } from "zod";
 
 import { isValidAuthEmail, normalizePhone } from "./validators";

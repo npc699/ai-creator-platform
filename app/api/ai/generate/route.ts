@@ -25,10 +25,12 @@ type AiStreamEvent =
 
 const encoder = new TextEncoder();
 
+/** 编码流式事件为 NDJSON 格式 */
 function encodeStreamEvent(event: AiStreamEvent) {
   return encoder.encode(`${JSON.stringify(event)}\n`);
 }
 
+/** 获取错误消息，优先考虑火山方舟配置错误 */
 function getErrorMessage(error: unknown) {
   if (error instanceof ArkConfigError) {
     return error.message;
@@ -41,10 +43,12 @@ function getErrorMessage(error: unknown) {
   return "AI 生成失败，请稍后重试";
 }
 
+/** 判断是否为 AbortError，用于忽略客户端主动中断 */
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
+/** 关闭流控制器，忽略可能的错误 */
 function closeStream(controller: ReadableStreamDefaultController<Uint8Array>) {
   try {
     controller.close();
@@ -53,11 +57,18 @@ function closeStream(controller: ReadableStreamDefaultController<Uint8Array>) {
   }
 }
 
+/**
+ * 处理 AI 文本生成请求，返回 NDJSON 格式的流式响应。
+ * 需登录后调用，支持生成、润色、扩写等多种模式。
+ */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "请先登录后再使用 AI 生成" }, { status: 401 });
+    return NextResponse.json(
+      { error: "请先登录后再使用 AI 生成" },
+      { status: 401 }
+    );
   }
 
   let body: unknown;
