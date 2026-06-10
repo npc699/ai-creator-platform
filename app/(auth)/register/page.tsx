@@ -121,7 +121,6 @@ export default function RegisterPage() {
               id="email"
               name="email"
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="name@example.com"
               type="text"
               value={email}
             />
@@ -137,7 +136,6 @@ export default function RegisterPage() {
               id="phone"
               name="phone"
               onChange={(event) => setPhone(event.target.value)}
-              placeholder="13800138000"
               type="tel"
               value={phone}
             />

@@ -79,7 +79,6 @@ export default function LoginPage() {
               id="identifier"
               name="identifier"
               onChange={(event) => setIdentifier(event.target.value)}
-              placeholder="name@example.com 或 13800138000"
               type="text"
               value={identifier}
             />

@@ -1,5 +1,5 @@
-// 运维回填：为测试用户已发布但 qualityScore 为空的文章补模拟质量分与 PASSED 审核态。
-// 运行：npm run db:backfill:test-quality；算法与 seed-test-posts 的 deriveTestQualityScore 相同。
+// 运维回填：为测试用户已发布但缺质量分/审核记录的文章补模拟审核数据。
+// 运行：npm run db:backfill:test-quality；常规 seed-test-posts 已写入时可跳过。
 import "dotenv/config";
 
 import { readFile } from "node:fs/promises";
@@ -12,7 +12,9 @@ import {
   PrismaClient,
   ReviewRiskLevel,
   ReviewStatus,
+  ReviewType,
 } from "../../../lib/generated/prisma/client";
+import { buildMockReviewBundle } from "../seeds/mock-review-data";
 
 const databaseUrl = process.env.DATABASE_URL;
 
@@ -30,18 +32,6 @@ const ACCOUNTS_PATH = path.join(
   "test-accounts",
   "accounts.json"
 );
-
-/** 与 seed-test-posts 共用公式，改一处须同步另一处。 */
-function deriveTestQualityScore(input: {
-  viewCount: number;
-  likeCount: number;
-}) {
-  const engagement = input.likeCount * 3 + input.viewCount;
-  const normalized =
-    Math.log10(engagement + 1) / Math.log10(200_000);
-  const score = 52 + normalized * 40;
-  return Math.round(Math.min(92, Math.max(52, score)));
-}
 
 async function resolveTestUserIds() {
   try {
@@ -65,15 +55,14 @@ async function main() {
     where: {
       status: PostStatus.PUBLISHED,
       qualityScore: null,
-      ...(testUserIds?.length
-        ? { userId: { in: testUserIds } }
-        : {}),
+      ...(testUserIds?.length ? { userId: { in: testUserIds } } : {}),
     },
     select: {
       id: true,
+      userId: true,
       title: true,
-      viewCount: true,
-      likeCount: true,
+      content: true,
+      tags: true,
       publishedAt: true,
       updatedAt: true,
     },
@@ -87,21 +76,42 @@ async function main() {
   let updated = 0;
 
   for (const post of posts) {
-    const qualityScore = deriveTestQualityScore(post);
-    await prisma.post.update({
-      where: { id: post.id },
-      data: {
-        qualityScore,
-        reviewStatus: ReviewStatus.PASSED,
-        reviewRiskLevel: ReviewRiskLevel.NONE,
-        reviewedAt: post.publishedAt ?? post.updatedAt,
-      },
+    const review = buildMockReviewBundle({
+      title: post.title,
+      content: post.content,
+      tags: post.tags,
     });
+
+    await prisma.$transaction([
+      prisma.post.update({
+        where: { id: post.id },
+        data: {
+          qualityScore: review.qualityScore,
+          reviewStatus: ReviewStatus.PASSED,
+          reviewRiskLevel: ReviewRiskLevel.NONE,
+          reviewedAt: post.publishedAt ?? post.updatedAt,
+        },
+      }),
+      prisma.reviewRecord.create({
+        data: {
+          postId: post.id,
+          userId: post.userId,
+          reviewType: ReviewType.PUBLISH,
+          contentHash: review.contentHash,
+          passed: true,
+          riskLevel: ReviewRiskLevel.NONE,
+          categories: [],
+          qualityScore: review.qualityScore,
+          result: review.result,
+        },
+      }),
+    ]);
+
     updated += 1;
-    console.log(`  ✓ ${post.title} → 质量分 ${qualityScore}`);
+    console.log(`  ✓ ${post.title} → 质量分 ${review.qualityScore}`);
   }
 
-  console.log(`\n回填完成：${updated} 篇文章已恢复模拟质量分与审核状态。`);
+  console.log(`\n回填完成：${updated} 篇文章已恢复模拟质量分与审核记录。`);
 }
 
 main()

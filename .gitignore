@@ -48,3 +48,6 @@ next-env.d.ts
 
 # 本地测试账号凭据，勿提交
 /local/test-accounts/
+
+# 本地文档，不入库
+/docs/

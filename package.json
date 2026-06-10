@@ -11,6 +11,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
+    "db:push:remote": "tsx scripts/db/push-remote.ts",
     "db:seed": "prisma db seed",
     "db:seed:test-users": "tsx scripts/db/seeds/seed-test-users.ts",
     "db:seed:prompts": "tsx scripts/db/seeds/seed-prompts.ts",

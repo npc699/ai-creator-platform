@@ -22,37 +22,36 @@ const prisma = new PrismaClient({
 
 const OUTPUT_DIR = path.join(process.cwd(), "local", "test-accounts");
 
-// *@localhost 与 lib/auth/validators 开发放宽规则配套，仅用于本地联调。
 const TEST_USERS = [
   {
-    email: "test01@localhost",
-    name: "测试用户01",
-    password: "TestUser01!",
-    label: "创作者 A",
+    email: "linxiaozhou@qq.com",
+    name: "林晓舟",
+    password: "LinXz2026!",
+    label: "林晓舟",
   },
   {
-    email: "test02@localhost",
-    name: "测试用户02",
-    password: "TestUser02!",
-    label: "创作者 B",
+    email: "suwanqing@163.com",
+    name: "苏晚晴",
+    password: "SuWq2026!",
+    label: "苏晚晴",
   },
   {
-    email: "test03@localhost",
-    name: "测试用户03",
-    password: "TestUser03!",
-    label: "创作者 C",
+    email: "zhouyian@outlook.com",
+    name: "周予安",
+    password: "ZhouYa2026!",
+    label: "周予安",
   },
   {
-    email: "test04@localhost",
-    name: "测试用户04",
-    password: "TestUser04!",
-    label: "创作者 D",
+    email: "xujiayan@foxmail.com",
+    name: "许嘉言",
+    password: "XuJy2026!",
+    label: "许嘉言",
   },
   {
-    email: "test05@localhost",
-    name: "测试用户05",
-    password: "TestUser05!",
-    label: "创作者 E",
+    email: "tangyingzhen@gmail.com",
+    name: "唐映真",
+    password: "TangYz2026!",
+    label: "唐映真",
   },
 ] as const;
 
@@ -109,7 +108,7 @@ async function main() {
   const generatedAt = new Date().toISOString();
   const payload = {
     generatedAt,
-    note: "仅供本地开发测试，请勿提交到 Git 或用于生产环境。",
+    note: "仅供本地/演示环境测试，请勿提交到 Git 或用于真实生产用户。",
     loginUrl: process.env.NEXTAUTH_URL ?? "http://localhost:3000/login",
     accounts: created,
   };
@@ -121,11 +120,11 @@ async function main() {
   );
 
   const textLines = [
-    "AI 创作者平台 · 本地测试账号",
+    "AI 创作者平台 · 测试账号凭据",
     `生成时间: ${generatedAt}`,
     `登录地址: ${payload.loginUrl}`,
     "",
-    "说明: 以下账号角色均为 USER，与现有管理员账号相互独立。",
+    "说明: 以下账号角色均为 USER，与管理员账号相互独立。",
     "",
     ...created.flatMap((account, index) => [
       `--- 账号 ${index + 1}: ${account.label} ---`,
